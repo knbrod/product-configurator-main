@@ -424,13 +424,6 @@ export function TestModelViewer({ productPath }: { productPath: string }) {
         <RifleModel productPath={productPath} />
       </Suspense>
       
-      {/* Softer contact shadows */}
-      <ContactShadows
-        position={[0, -1.5, 0]}
-        opacity={0.1}
-        scale={5}
-        blur={2}
-      />
-    </>
+     </>
   );
 }

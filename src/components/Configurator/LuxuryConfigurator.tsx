@@ -16,7 +16,8 @@ interface LuxuryHotspotProps {
 function LuxuryHotspot({ partId, position, title, description }: LuxuryHotspotProps) {
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
-  const { camera } = useThree();
+  const [tooltipPosition, setTooltipPosition] = useState<[number, number, number]>([0, 0.5, 0]);
+  const { camera, gl } = useThree();
   const { 
     setModalOpen,
     setModalPartId,
@@ -27,16 +28,34 @@ function LuxuryHotspot({ partId, position, title, description }: LuxuryHotspotPr
   // Hide hotspot during export
   if (hideHotspots) return null;
 
-  // Subtle premium animation
-  useFrame((state) => {
+  // Calculate tooltip position based on screen position
+  useFrame(() => {
     if (meshRef.current) {
       // Very subtle floating
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime * 1.5) * 0.01;
+      meshRef.current.position.y = position[1] + Math.sin(Date.now() * 0.0015) * 0.01;
       // Face camera
       meshRef.current.lookAt(camera.position);
       // Gentle scale animation when hovered
       const targetScale = hovered ? 1.1 : 1.0;
       meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
+
+      // Dynamic tooltip positioning
+      if (hovered) {
+        const worldPosition = new THREE.Vector3();
+        meshRef.current.getWorldPosition(worldPosition);
+        worldPosition.project(camera);
+        
+        // Calculate screen Y position (0 = bottom, 1 = top)
+        const screenY = worldPosition.y * -0.5 + 0.5;
+        
+        // If hotspot is in top half of screen, tooltip goes down
+        // If hotspot is in bottom half, tooltip goes up
+        if (screenY < 0.5) {
+          setTooltipPosition([0, -0.5, 0]); // Below hotspot
+        } else {
+          setTooltipPosition([0, 0.8, 0]); // Above hotspot
+        }
+      }
     }
   });
 
@@ -70,7 +89,7 @@ function LuxuryHotspot({ partId, position, title, description }: LuxuryHotspotPr
       {/* Premium tooltip */}
       {hovered && (
         <Html
-          position={[0, 0.5, 0]}
+          position={tooltipPosition}
           center
           distanceFactor={12}
           className="pointer-events-none"

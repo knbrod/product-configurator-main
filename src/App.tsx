@@ -64,7 +64,7 @@ function App() {
         exportCanvas.height = canvas.height;
         
         // White background
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = '#FFF8F0';
         ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
         
         // Draw the 3D scene
