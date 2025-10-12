@@ -1,0 +1,405 @@
+{
+  "productName": "M200 Rifle Configurator",
+  "sku": "M200-BASE",
+  "defaultCamera": {
+    "position": { "x": 5, "y": 2, "z": 8 },
+    "target": { "x": 0, "y": 0, "z": 0 },
+    "fov": 50
+  },
+  "hotspots": [
+    {
+      "partId": "barrel",
+      "position": { "x": 0, "y": 0.0, "z": 5.0 },
+      "title": ".375/.408 Interchangeable Barrel",
+      "summary": "Take Down/Interchangeable barrel"
+    },
+    {
+      "partId": "receiver",
+      "position": { "x": 0, "y": 0.8, "z": -0.5 },
+      "title": "Receiver",
+      "summary": "CNC Machined receiver"
+    },
+    {
+      "partId": "handGuard",
+      "position": { "x": 0, "y": -0.06, "z": 1.8 },
+      "title": "Hand Guard",
+      "summary": "Hand Guard"
+    },
+    {
+      "partId": "cheekPiece",
+      "position": { "x": 0.2, "y": 0.8, "z": -6.0 },
+      "title": "Cheek Piece",
+      "summary": "Stock"
+    },
+    {
+      "partId": "moaRail",
+      "position": { "x": 0, "y": 0.8, "z": -2.0 },
+      "title": "MOA Rail",
+      "summary": "40 MOA Scope Rail"
+    },
+    {
+      "partId": "magazine",
+      "position": { "x": 0, "y": -0.6, "z": -2.0 },
+      "title": "Magazine",
+      "summary": "Seven (7) round detachable box magazine"
+    },
+    {
+      "partId": "carryHandle",
+      "position": { "x": 0.0, "y": -0.3, "z": -0.3 },
+      "title": "Carry Handle",
+      "summary": "Handle"
+    },
+    {
+      "partId": "muzzleBrake",
+      "position": { "x": 0, "y": 0.0, "z": 6.5 },
+      "title": "Muzzle Brake",
+      "summary": "Brake"
+    },
+    {
+      "partId": "bipodMonopod",
+      "position": { "x": 0, "y": -0.6, "z": 2.0 },
+      "title": "Bipod/Monopod",
+      "summary": "Support"
+    },
+    {
+      "partId": "boltHandle",
+      "position": { "x": -1.0, "y": -0.25, "z": -4.5 },
+      "title": "Bolt Handle",
+      "summary": "Handle"
+    }
+  ],
+  "ui": [
+    {
+      "groupId": "mount",
+      "label": "Scope Mount",
+      "partIds": ["moaRail"]
+    },
+    {
+      "groupId": "mag",
+      "label": "Magazine",
+      "partIds": ["magazine"]
+    },
+    {
+      "groupId": "ergonomics",
+      "label": "Ergonomics",
+      "partIds": ["receiver", "cheekPiece", "carryHandle", "boltHandle"]
+    },
+    {
+      "groupId": "finish",
+      "label": "Finishing",
+      "partIds": ["barrel", "handGuard", "receiver", "muzzleBrake", "bipodMonopod"]
+    }
+  ],
+  "configurableParts": [
+    "barrel",
+    "receiver", 
+    "handGuard",
+    "cheekPiece",
+    "moaRail",
+    "magazine",
+    "carryHandle",
+    "handleClamp",
+    "muzzleBrake",
+    "bipodMonopod",
+    "boltHandle"
+  ],
+  "finishModes": {
+    "colors": {
+      "label": "Custom Colors",
+      "description": "Choose individual colors for each part",
+      "allowIndividualSelection": true,
+      "options": [
+        {
+          "id": "cerakote-black",
+          "label": "Cerakote® Absolute Black",
+          "material": {
+            "type": "color",
+            "color": "#000000",
+            "metalness": 0.3,
+            "roughness": 0.8
+          }
+        },
+        {
+          "id": "cerakote-fde",
+          "label": "Cerakote® Flat Dark Earth",
+          "material": {
+            "type": "color",
+            "color": "#7A6C5F",
+            "metalness": 0.3,
+            "roughness": 0.8
+          }
+        },
+        {
+          "id": "cerakote-od-green",
+          "label": "Cerakote® O.D. Green",
+          "material": {
+            "type": "color",
+            "color": "#59574D",
+            "metalness": 0.3,
+            "roughness": 0.8
+          }
+        },
+        {
+          "id": "cerakote-tungsten",
+          "label": "Cerakote® Tungsten",
+          "material": {
+            "type": "color",
+            "color": "#656763",
+            "metalness": 0.3,
+            "roughness": 0.8
+          }
+        },
+        {
+          "id": "cerakote-vortex-bronze",
+          "label": "Cerakote® Vortex Bronze",
+          "material": {
+            "type": "color",
+            "color": "#58504E",
+            "metalness": 0.3,
+            "roughness": 0.8
+            }
+            }
+      ]
+    },
+    "patterns": {
+      "label": "Tactical Patterns",
+      "description": "Apply one pattern to entire rifle",
+      "allowIndividualSelection": false,
+      "options": [
+        {
+          "id": "banshee-pattern",
+          "label": "Kryptek® Banshee",
+          "thumbnail": "/textures/banshee.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/banshee.jpg",
+            "metalness": 0.2,
+            "roughness": 0.9,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "battleship-pattern",
+          "label": "Kryptek® Battleship",
+          "thumbnail": "/textures/battleship.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/battleship.jpg",
+            "metalness": 0.4,
+            "roughness": 0.7,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "diablo-pattern",
+          "label": "Kryptek® Diablo",
+          "thumbnail": "/textures/diablo.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/diablo.jpg",
+            "metalness": 0.2,
+            "roughness": 0.8,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "highlander-pattern",
+          "label": "Kryptek® Highlander",
+          "thumbnail": "/textures/highlander.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/highlander.jpg",
+            "metalness": 0.2,
+            "roughness": 0.9,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "inferno-pattern",
+          "label": "Kryptek® Inferno",
+          "thumbnail": "/textures/inferno.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/inferno.jpg",
+            "metalness": 0.3,
+            "roughness": 0.8,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "pink-pattern",
+          "label": "Kryptek® Pink Camo",
+          "thumbnail": "/textures/pink.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/pink.jpg",
+            "metalness": 0.2,
+            "roughness": 0.8,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "raid-pattern",
+          "label": "Kryptek® Raid",
+          "thumbnail": "/textures/raid.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/raid.jpg",
+            "metalness": 0.2,
+            "roughness": 0.9,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        },
+        {
+          "id": "typhon-pattern",
+          "label": "Kryptek® Typhon",
+          "thumbnail": "/textures/typhon.jpg",
+          "material": {
+            "type": "texture",
+            "textureUrl": "/textures/typhon.jpg",
+            "metalness": 0.2,
+            "roughness": 0.8,
+            "repeat": {
+              "barrel": [2, 1],
+              "muzzleBrake": [2, 1],
+              "default": [1, 1]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "parts": [
+    {
+      "id": "barrel",
+      "label": "Barrel",
+      "meshSelectors": ["CT_3-002_408_Barrel_Blank_-_Chambered"]
+    },
+    {
+      "id": "receiver",
+      "label": "Receiver",
+      "meshSelectors": [
+        "CT_1-001_Receiver",
+        "Trigger_Guard_2024",
+        "CT_1-006_Cover_Plate"
+      ]
+    },
+    {
+      "id": "handGuard",
+      "label": "Hand Guard",
+      "meshSelectors": [
+        "CT_5-001_Hand_Guard",
+        "CT_5-002_Hand_Guard_Clamp",
+        "CT_3-003_Barrel_Nut"
+      ]
+    },
+    {
+      "id": "cheekPiece",
+      "label": "Cheek Piece",
+      "meshSelectors": [
+        "CT_4-008_Cheek_Piece",
+        "CT_4-006_Cheek_Piece_Bracket",
+        "CT_4-003_Butt_Plate",
+        "CT_4-009_Cheek_Piece_Retainer_2"
+      ]
+    },
+    {
+      "id": "moaRail",
+      "label": "MOA Rail",
+      "meshSelectors": ["CT_1-002_40_MOA_Rail"]
+    },
+    {
+      "id": "magazine",
+      "label": "Magazine",
+      "meshSelectors": [
+        "Magazine_21",
+        "Magazine_21_Base_Plate"
+      ]
+    },
+    {
+      "id": "carryHandle",
+      "label": "Carry Handle",
+      "meshSelectors": [
+        "CT_5-004_Carry_Handle",
+        "CT_1-013_Handle_Mount"
+      ]
+    },
+    {
+      "id": "muzzleBrake",
+      "label": "Muzzle Brake",
+      "meshSelectors": [
+        "CT408_SASS_Suppressor_-_175OD_-_Recoil_Compensator_-_Original_",
+        "Direct_Thread_HUB_Mount"
+      ]
+    },
+    {
+      "id": "handleClamp",
+      "label": "Handle Clamp",
+      "meshSelectors": ["CT_5-005_Handle_Clamp"]
+    },
+    {
+      "id": "bipodMonopod",
+      "label": "Bipod/Monopod",
+      "meshSelectors": [
+        "CT_5-007-2_Bipod_Bracket",
+        "CT_5-009-2_Swivel_Guide_Plate",
+        "CT_5-009-2_Swivel_Guide_Plate001",
+        "CT_5-010-2_Bipod_Inner_Leg",
+        "CT_5-010-2_Bipod_Inner_Leg001",
+        "CT_5-011-2_Bipod_Locking_Pin",
+        "CT_5-011-2_Bipod_Locking_Pin001",
+        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob",
+        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob001",
+        "CT_5-016-2_Bipod_Outer_Leg",
+        "CT_5-016-2_Bipod_Outer_Leg001",
+        "CT_5-017-2_Bipod_Foot_Adapter",
+        "CT_5-017-2_Bipod_Foot_Adapter001",
+        "CT_5-018-2_Bipod_Foot_Release_Housing",
+        "CT_5-018-2_Bipod_Foot_Release_Housing001",
+        "CT_5-020_Bipod_Foot_Release",
+        "CT_5-020_Bipod_Foot_Release001",
+        "CT_4-011_Monopod_Leg",
+        "CT_4-012_Monopod_Foot"
+      ]
+    },
+    {
+      "id": "boltHandle",
+      "label": "Bolt Handle",
+      "meshSelectors": [
+        "CT_2-006_Bolt_Handle_Base",
+        "CT_2-006_Bolt_Handle_Shaft",
+        "CT_2-007_Bolt_Handle_Knob",
+        "CT_2-008_Bolt_Lock_Nut", 
+        "CT_2-009_Bolt_Cam"
+      ]
+    }
+  ]
+}
