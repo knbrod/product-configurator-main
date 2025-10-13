@@ -424,7 +424,11 @@ function App() {
             </div>
 
             <button
-              onClick={() => setShowDisclaimer(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDisclaimer(false);
+              }}
               style={{
                 width: '100%',
                 background: '#BA2025',
