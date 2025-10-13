@@ -236,7 +236,7 @@ function createMaterialFromDefinition(materialDef: any, partId?: string): THREE.
   return material;
 }
 
-function RifleModel({ productPath }: { productPath: string }) {
+function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLoadComplete?: () => void }) {
   const modelRef = useRef<THREE.Group>(null);
   const { scene } = useGLTF(`${productPath}/product.glb`);
   const { 
@@ -258,8 +258,15 @@ function RifleModel({ productPath }: { productPath: string }) {
   const stableScene = useMemo(() => {
     const clonedScene = scene.clone();
     console.log('RifleModel: Created stable scene clone');
+    
+    // Call onLoadComplete when model is ready
+    if (onLoadComplete) {
+      // Small delay to ensure everything is rendered
+      setTimeout(() => onLoadComplete(), 100);
+    }
+    
     return clonedScene;
-  }, [scene]);
+  }, [scene, onLoadComplete]);
 
   // Apply materials when selections change
   useEffect(() => {
@@ -375,7 +382,7 @@ function LoadingFallback() {
   );
 }
 
-export function TestModelViewer({ productPath }: { productPath: string }) {
+export function TestModelViewer({ productPath, onLoadComplete }: { productPath: string; onLoadComplete?: () => void }) {
   console.log('TestModelViewer: Rendering with enhanced lighting');
   
   return (
@@ -426,7 +433,7 @@ export function TestModelViewer({ productPath }: { productPath: string }) {
       <Environment preset="city" background={false} />
       
       <Suspense fallback={<LoadingFallback />}>
-        <RifleModel productPath={productPath} />
+        <RifleModel productPath={productPath} onLoadComplete={onLoadComplete} />
       </Suspense>
       
      </>

@@ -29,6 +29,7 @@ function App() {
   const { loadManifest } = useConfigStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modelLoading, setModelLoading] = useState(true);
 
   // Single-view export function
   const handleExport = async () => {
@@ -127,7 +128,7 @@ function App() {
       const manifestData = await response.json();
       const validatedManifest = validateManifest(manifestData);
       
-    loadManifest(validatedManifest, 'https://cheytac-assets.sfo3.digitaloceanspaces.com');
+      loadManifest(validatedManifest, 'https://cheytac-assets.sfo3.digitaloceanspaces.com');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
       console.error('Failed to load product manifest:', err);
@@ -187,7 +188,10 @@ function App() {
         }}
         shadows
       >
-       <TestModelViewer productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com" />
+        <TestModelViewer 
+          productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com"
+          onLoadComplete={() => setModelLoading(false)}
+        />
         <LuxuryConfigurator />
       </Canvas>
       
@@ -268,14 +272,81 @@ function App() {
         </div>
       </div>
 
-      {/* CSS for toasts */}
+      {/* 3D Model Loading Overlay */}
+      {modelLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom right, #FAF9F6, #EAE8E4)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.3s ease-in'
+        }}>
+          <img 
+            src="/logo.png" 
+            alt="CheyTac USA" 
+            style={{ 
+              height: '120px', 
+              width: 'auto',
+              marginBottom: '30px',
+              animation: 'pulse 2s ease-in-out infinite'
+            }}
+          />
+          <div style={{
+            color: '#BA2025',
+            fontSize: '16px',
+            fontWeight: '600',
+            letterSpacing: '1px'
+          }}>
+            LOADING CONFIGURATOR
+          </div>
+          <div style={{
+            width: '200px',
+            height: '3px',
+            background: 'rgba(186, 32, 37, 0.2)',
+            borderRadius: '2px',
+            marginTop: '20px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              height: '100%',
+              background: '#BA2025',
+              animation: 'loadingBar 2s ease-in-out infinite'
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* CSS for animations and toasts */}
       <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(0.98); }
+        }
+        
+        @keyframes loadingBar {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(100%); }
+          100% { transform: translateX(100%); }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
         .export-toast {
           position: fixed;
           top: 100px;
           right: 20px;
           padding: 12px 20px;
-          border-radius: 8px;
+          borderRadius: 8px;
           color: white;
           font-weight: 600;
           font-size: 14px;
