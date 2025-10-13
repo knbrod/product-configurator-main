@@ -30,6 +30,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(true);
+  const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
 
   // Single-view export function
   const handleExport = async () => {
@@ -113,6 +114,17 @@ function App() {
 
   useEffect(() => {
     loadProductManifest();
+    
+    // Auto-expand ITAR notice on desktop
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setItarCollapsed(false);
+      }
+    };
+    
+    handleResize(); // Check initial size
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const loadProductManifest = async () => {
@@ -244,7 +256,7 @@ function App() {
         </button>
       </div>
       
-      {/* ITAR Notice - MOVED TO BOTTOM LEFT */}
+      {/* ITAR Notice - Collapsible on Mobile */}
       <div 
         className="itar-notice"
         style={{
@@ -253,23 +265,52 @@ function App() {
           left: '20px',
           background: '#ba2025',
           color: 'white',
-          padding: '15px',
+          padding: itarCollapsed ? '10px 12px' : '15px',
           borderRadius: '8px',
-          maxWidth: '280px',
+          maxWidth: itarCollapsed ? 'auto' : '280px',
           fontSize: '11px',
           lineHeight: '1.4',
           border: '2px solid #ba2025',
           zIndex: 30,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          transition: 'all 0.3s ease',
+          cursor: 'pointer',
+          userSelect: 'none'
         }}
+        onClick={() => setItarCollapsed(!itarCollapsed)}
       >
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '13px' }}>
-          ⚠️ ITAR / EAR NOTICE
-        </div>
-        <div>
-          This configurator is for demonstration purposes only. This does not constitute a sale or offer for sale. 
-          Export restrictions may apply under ITAR and EAR regulations.
-        </div>
+        {itarCollapsed ? (
+          // Collapsed view - just icon and short text
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px',
+            fontWeight: 'bold',
+            fontSize: '12px'
+          }}>
+            <span>⚠️ ITAR</span>
+            <span style={{ fontSize: '10px', opacity: 0.8 }}>▶</span>
+          </div>
+        ) : (
+          // Expanded view - full notice
+          <>
+            <div style={{ 
+              fontWeight: 'bold', 
+              marginBottom: '8px', 
+              fontSize: '13px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <span>⚠️ ITAR / EAR NOTICE</span>
+              <span style={{ fontSize: '10px', opacity: 0.8 }}>▼</span>
+            </div>
+            <div>
+              This configurator is for demonstration purposes only. This does not constitute a sale or offer for sale. 
+              Export restrictions may apply under ITAR and EAR regulations.
+            </div>
+          </>
+        )}
       </div>
 
       {/* 3D Model Loading Overlay */}
@@ -392,10 +433,15 @@ function App() {
           .itar-notice {
             bottom: 100px !important;
             left: 10px !important;
-            right: 10px !important;
-            max-width: calc(100% - 20px) !important;
+            right: auto !important;
             font-size: 10px !important;
-            padding: 12px !important;
+          }
+        }
+        
+        /* Desktop - always show expanded */
+        @media (min-width: 769px) {
+          .itar-notice {
+            max-width: 280px !important;
           }
         }
       `}</style>
