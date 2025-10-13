@@ -157,8 +157,8 @@
             "color": "#58504E",
             "metalness": 0.3,
             "roughness": 0.8
-            }
-            }
+          }
+        }
       ]
     },
     "patterns": {
@@ -166,54 +166,6 @@
       "description": "Apply one pattern to entire rifle",
       "allowIndividualSelection": false,
       "options": [
-        {
-          "id": "banshee-pattern",
-          "label": "Kryptek® Banshee",
-          "thumbnail": "/textures/banshee.jpg",
-          "material": {
-            "type": "texture",
-            "textureUrl": "/textures/banshee.jpg",
-            "metalness": 0.2,
-            "roughness": 0.9,
-            "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
-            }
-          }
-        },
-        {
-          "id": "battleship-pattern",
-          "label": "Kryptek® Battleship",
-          "thumbnail": "/textures/battleship.jpg",
-          "material": {
-            "type": "texture",
-            "textureUrl": "/textures/battleship.jpg",
-            "metalness": 0.4,
-            "roughness": 0.7,
-            "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
-            }
-          }
-        },
-        {
-          "id": "diablo-pattern",
-          "label": "Kryptek® Diablo",
-          "thumbnail": "/textures/diablo.jpg",
-          "material": {
-            "type": "texture",
-            "textureUrl": "/textures/diablo.jpg",
-            "metalness": 0.2,
-            "roughness": 0.8,
-            "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
-            }
-          }
-        },
         {
           "id": "highlander-pattern",
           "label": "Kryptek® Highlander",
@@ -231,14 +183,14 @@
           }
         },
         {
-          "id": "inferno-pattern",
-          "label": "Kryptek® Inferno",
-          "thumbnail": "/textures/inferno.jpg",
+          "id": "nomad-pattern",
+          "label": "Kryptek® Nomad",
+          "thumbnail": "/textures/nomad.jpg",
           "material": {
             "type": "texture",
-            "textureUrl": "/textures/inferno.jpg",
-            "metalness": 0.3,
-            "roughness": 0.8,
+            "textureUrl": "/textures/nomad.jpg",
+            "metalness": 0.2,
+            "roughness": 0.9,
             "repeat": {
               "barrel": [2, 1],
               "muzzleBrake": [2, 1],
@@ -247,14 +199,14 @@
           }
         },
         {
-          "id": "pink-pattern",
-          "label": "Kryptek® Pink Camo",
-          "thumbnail": "/textures/pink.jpg",
+          "id": "multicam-pattern",
+          "label": "Multicam",
+          "thumbnail": "/textures/multicam.jpg",
           "material": {
             "type": "texture",
-            "textureUrl": "/textures/pink.jpg",
+            "textureUrl": "/textures/multicam.jpg",
             "metalness": 0.2,
-            "roughness": 0.8,
+            "roughness": 0.9,
             "repeat": {
               "barrel": [2, 1],
               "muzzleBrake": [2, 1],
@@ -271,22 +223,6 @@
             "textureUrl": "/textures/raid.jpg",
             "metalness": 0.2,
             "roughness": 0.9,
-            "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
-            }
-          }
-        },
-        {
-          "id": "typhon-pattern",
-          "label": "Kryptek® Typhon",
-          "thumbnail": "/textures/typhon.jpg",
-          "material": {
-            "type": "texture",
-            "textureUrl": "/textures/typhon.jpg",
-            "metalness": 0.2,
-            "roughness": 0.8,
             "repeat": {
               "barrel": [2, 1],
               "muzzleBrake": [2, 1],

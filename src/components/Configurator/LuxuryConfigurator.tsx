@@ -308,7 +308,8 @@ function LuxuryConfigModal() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 10000
+        zIndex: 10000,
+        padding: '20px'
       }}
     >
       <div 
@@ -317,22 +318,25 @@ function LuxuryConfigModal() {
         style={{
           backgroundColor: '#1a1a1a',
           borderRadius: '12px',
-          padding: '24px',
           maxWidth: '500px',
-          width: '90%',
+          width: '100%',
+          maxHeight: '90vh',
           color: 'white',
-          border: '2px solid #BA2025'
+          border: '2px solid #BA2025',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}
       >
         
-        {/* Header */}
+        {/* Header - FIXED */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          marginBottom: '20px',
+          padding: '24px 24px 20px',
           borderBottom: '2px solid #BA2025',
-          paddingBottom: '15px'
+          flexShrink: 0
         }}>
           <div>
             <div style={{ fontSize: '14px', color: '#BA2025', fontWeight: 'bold' }}>CheyTac USA</div>
@@ -360,121 +364,128 @@ function LuxuryConfigModal() {
           </button>
         </div>
 
-        {/* Mode Toggle Buttons */}
-        <div style={{
+        {/* Scrollable Content Area */}
+        <div style={{ 
+          flex: 1,
+          overflowY: 'auto',
+          padding: '20px 24px',
           display: 'flex',
-          backgroundColor: 'rgba(255,255,255,0.1)',
-          borderRadius: '8px',
-          padding: '4px',
-          marginBottom: '20px'
+          flexDirection: 'column',
+          gap: '15px'
         }}>
-          <button
-            onClick={() => setFinishMode('colors')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              backgroundColor: finishMode === 'colors' ? '#BA2025' : 'transparent',
-              color: finishMode === 'colors' ? 'white' : '#ccc',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Colors
-          </button>
-          <button
-            onClick={() => setFinishMode('patterns')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              backgroundColor: finishMode === 'patterns' ? '#BA2025' : 'transparent',
-              color: finishMode === 'patterns' ? 'white' : '#ccc',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Patterns
-          </button>
-        </div>
-
-        {/* Pattern Mode: Toggle between Pattern selection and Color override */}
-        {finishMode === 'patterns' && (
+          
+          {/* Mode Toggle Buttons */}
           <div style={{
             display: 'flex',
-            backgroundColor: 'rgba(255,255,255,0.05)',
+            backgroundColor: 'rgba(255,255,255,0.1)',
             borderRadius: '8px',
-            padding: '4px',
-            marginBottom: '15px'
+            padding: '4px'
           }}>
             <button
-              onClick={() => setShowingOverride(false)}
+              onClick={() => setFinishMode('colors')}
               style={{
                 flex: 1,
-                padding: '8px',
-                backgroundColor: !showingOverride ? '#ba2025df' : 'transparent',
-                color: !showingOverride ? 'white' : '#888',
+                padding: '10px',
+                backgroundColor: finishMode === 'colors' ? '#BA2025' : 'transparent',
+                color: finishMode === 'colors' ? 'white' : '#ccc',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '13px',
+                fontWeight: 'bold',
+                fontSize: '14px',
                 transition: 'all 0.2s ease'
               }}
             >
-              Rifle Pattern
+              Colors
             </button>
             <button
-              onClick={() => setShowingOverride(true)}
+              onClick={() => setFinishMode('patterns')}
               style={{
                 flex: 1,
-                padding: '8px',
-                backgroundColor: showingOverride ? '#ba2025df' : 'transparent',
-                color: showingOverride ? 'white' : '#888',
+                padding: '10px',
+                backgroundColor: finishMode === 'patterns' ? '#BA2025' : 'transparent',
+                color: finishMode === 'patterns' ? 'white' : '#ccc',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '13px',
+                fontWeight: 'bold',
+                fontSize: '14px',
                 transition: 'all 0.2s ease'
               }}
             >
-            Color Customization
+              Patterns
             </button>
           </div>
-        )}
 
-        {/* Info Banner */}
-        {finishMode === 'patterns' && showingOverride && (
-          <div style={{
-            backgroundColor: '#ba2025df',
-            border: '1px solid #BA2025',
-            borderRadius: '8px',
-            padding: '12px',
-            marginBottom: '15px',
-            fontSize: '13px',
-            color: '#ccc'
-          }}>
-             Select a color to accent the pattern for <strong>{part.label}</strong> only
-          </div>
-        )}
+          {/* Pattern Mode: Toggle between Pattern selection and Color override */}
+          {finishMode === 'patterns' && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'rgba(255,255,255,0.05)',
+              borderRadius: '8px',
+              padding: '4px'
+            }}>
+              <button
+                onClick={() => setShowingOverride(false)}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  backgroundColor: !showingOverride ? '#ba2025df' : 'transparent',
+                  color: !showingOverride ? 'white' : '#888',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Rifle Pattern
+              </button>
+              <button
+                onClick={() => setShowingOverride(true)}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  backgroundColor: showingOverride ? '#ba2025df' : 'transparent',
+                  color: showingOverride ? 'white' : '#888',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+              Color Customization
+              </button>
+            </div>
+          )}
 
-        {/* Configuration Section */}
-        <div>
-          <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '15px', color: 'white' }}>
+          {/* Info Banner */}
+          {finishMode === 'patterns' && showingOverride && (
+            <div style={{
+              backgroundColor: '#ba2025df',
+              border: '1px solid #BA2025',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '13px',
+              color: '#ccc'
+            }}>
+               Select a color to accent the pattern for <strong>{part.label}</strong> only
+            </div>
+          )}
+
+          {/* Configuration Section Title */}
+          <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
             {finishMode === 'patterns' 
               ? (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
               : 'Available Colors'
             }
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
+          {/* Options List - Scrollable */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {availableOptions.map(option => (
               <div
                 key={option.id}
@@ -528,15 +539,15 @@ function LuxuryConfigModal() {
           </div>
         </div>
 
-        {/* Footer - ALWAYS SHOW BOTH BUTTONS */}
+        {/* Footer - FIXED AT BOTTOM */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between',
           gap: '10px',
-          marginTop: '16px',
-          paddingTop: '12px',
+          padding: '16px 24px',
           borderTop: '1px solid rgba(255,255,255,0.2)',
-          flexShrink: 0
+          flexShrink: 0,
+          backgroundColor: '#1a1a1a'
         }}>
           {/* Reset to Pattern button - always visible but disabled if no override */}
           <button 
