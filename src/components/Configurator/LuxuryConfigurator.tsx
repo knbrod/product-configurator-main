@@ -528,34 +528,35 @@ function LuxuryConfigModal() {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer - ALWAYS SHOW BOTH BUTTONS */}
         <div style={{ 
           display: 'flex', 
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           gap: '10px',
           marginTop: '16px',
           paddingTop: '12px',
           borderTop: '1px solid rgba(255,255,255,0.2)',
           flexShrink: 0
         }}>
-          {/* Reset to Pattern button - only show if part has color override */}
-          {hasColorOverride && (
-            <button 
-              onClick={handleResetToPattern}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: 'transparent',
-                border: '2px solid #BA2025',
-                color: '#BA2025',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px'
-              }}
-            >
-              Reset to Pattern
-            </button>
-          )}
+          {/* Reset to Pattern button - always visible but disabled if no override */}
+          <button 
+            onClick={handleResetToPattern}
+            disabled={!hasColorOverride}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'transparent',
+              border: `2px solid ${hasColorOverride ? '#BA2025' : '#555'}`,
+              color: hasColorOverride ? '#BA2025' : '#555',
+              borderRadius: '6px',
+              cursor: hasColorOverride ? 'pointer' : 'not-allowed',
+              fontWeight: 'bold',
+              fontSize: '14px',
+              opacity: hasColorOverride ? 1 : 0.5,
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Reset to Pattern
+          </button>
           
           <button 
             onClick={handleClose}

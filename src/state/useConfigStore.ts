@@ -262,9 +262,20 @@ export const useConfigStore = create<ConfigState>()(
 
       clearPartColorOverride: (partId: string) => {
         const { partColorOverrides } = get();
+        console.log('🧹 clearPartColorOverride called for:', partId);
+        console.log('🧹 Current overrides before clear:', partColorOverrides);
+        
         const newOverrides = { ...partColorOverrides };
         delete newOverrides[partId];
-        set({ partColorOverrides: newOverrides, configId: generateConfigId() });
+        
+        console.log('🧹 New overrides after clear:', newOverrides);
+        
+        set({ 
+          partColorOverrides: newOverrides, 
+          configId: generateConfigId() 
+        });
+        
+        console.log('🧹 State updated, should trigger re-render');
       },
 
       // Legacy actions (for backward compatibility)
@@ -458,7 +469,7 @@ export const useConfigStore = create<ConfigState>()(
         if (Object.keys(materials).length === 0) {
           manifest.parts.forEach(part => {
             const selectedOptionId = selectedOptions[part.id];
-            const option = part.options?.find(o => o.id === selectedOptionId);
+            const option = part?.options?.find(o => o.id === selectedOptionId);
             
             if (option) {
               part.meshSelectors?.forEach(selector => {
