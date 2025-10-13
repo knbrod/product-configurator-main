@@ -198,7 +198,8 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(to bottom right, #efddddd3, #000000)' }}>
-      <Canvas 
+      <div style={{ pointerEvents: showDisclaimer ? 'none' : 'auto', width: '100%', height: '100%' }}>
+        <Canvas 
         camera={{ 
           position: cameraPosition, 
           fov: 75,
@@ -327,6 +328,7 @@ function App() {
           </>
         )}
       </div>
+      </div>
 
       {/* Visualization Disclaimer Modal */}
       {showDisclaimer && (
@@ -341,7 +343,7 @@ function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 10000,
+          zIndex: 999999,
           padding: '20px',
           animation: 'fadeIn 0.3s ease-in',
           pointerEvents: 'auto'
@@ -359,7 +361,7 @@ function App() {
             animation: 'slideUp 0.4s ease-out',
             pointerEvents: 'auto',
             position: 'relative',
-            zIndex: 10001
+            zIndex: 1000000
           }}>
             <div style={{
               textAlign: 'center',
@@ -449,7 +451,7 @@ function App() {
                 boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
                 pointerEvents: 'auto',
                 position: 'relative',
-                zIndex: 10002
+                zIndex: 1000001
               }}
               onMouseOver={(e) => {
                 const target = e.currentTarget;
