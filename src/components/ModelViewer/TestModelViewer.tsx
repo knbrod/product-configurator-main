@@ -242,7 +242,8 @@ function RifleModel({ productPath }: { productPath: string }) {
   const { 
     finishMode, 
     selectedPattern, 
-    selectedColors, 
+    selectedColors,
+    partColorOverrides,
     getSelectedMaterials,
     manifest 
   } = useConfigStore();
@@ -251,6 +252,7 @@ function RifleModel({ productPath }: { productPath: string }) {
   console.log('RifleModel: Current finish mode:', finishMode);
   console.log('RifleModel: Selected pattern:', selectedPattern);
   console.log('RifleModel: Selected colors:', selectedColors);
+  console.log('RifleModel: Part color overrides:', partColorOverrides);
   
   // Create a stable scene copy that won't be re-cloned
   const stableScene = useMemo(() => {
@@ -263,6 +265,7 @@ function RifleModel({ productPath }: { productPath: string }) {
   useEffect(() => {
     if (modelRef.current && manifest) {
       console.log('RifleModel: Applying materials for finish mode:', finishMode);
+      console.log('RifleModel: Part overrides in effect:', partColorOverrides);
       
       modelRef.current.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -283,43 +286,45 @@ function RifleModel({ productPath }: { productPath: string }) {
           // Try new system first
           if (manifest.configurableParts && manifest.finishModes) {
             const configurableParts = manifest.configurableParts;
-            const isConfigurablePart = configurableParts.some(partId => {
+            
+            // Find which part this mesh belongs to
+            const partId = configurableParts.find(partId => {
               const part = manifest.parts?.find(p => p.id === partId);
               return part?.meshSelectors?.includes(child.name);
             });
 
-            if (isConfigurablePart) {
+            if (partId) {
               shouldApplyMaterial = true;
 
               if (finishMode === 'patterns' && selectedPattern) {
-                // Apply pattern to all configurable parts
-                const patternOption = manifest.finishModes.patterns?.options?.find(
-                  option => option.id === selectedPattern
-                );
-                
-                if (patternOption) {
-                  const partId = configurableParts.find(partId => {
-                    const part = manifest.parts?.find(p => p.id === partId);
-                    return part?.meshSelectors?.includes(child.name);
-                  });
-                  
-                  materialToApply = createMaterialFromDefinition(patternOption.material, partId);
-                  console.log('RifleModel: Applied pattern', selectedPattern, 'to mesh:', child.name);
+                // Check if this part has a color override
+                if (partColorOverrides[partId]) {
+                  console.log('🎨 Applying color override to', partId, ':', partColorOverrides[partId]);
+                  const colorOption = manifest.finishModes.colors?.options?.find(
+                    option => option.id === partColorOverrides[partId]
+                  );
+                  if (colorOption) {
+                    materialToApply = createMaterialFromDefinition(colorOption.material, partId);
+                    console.log('RifleModel: Applied color override to mesh:', child.name);
+                  }
+                } else {
+                  // Apply pattern
+                  const patternOption = manifest.finishModes.patterns?.options?.find(
+                    option => option.id === selectedPattern
+                  );
+                  if (patternOption) {
+                    materialToApply = createMaterialFromDefinition(patternOption.material, partId);
+                    console.log('RifleModel: Applied pattern', selectedPattern, 'to mesh:', child.name);
+                  }
                 }
               } else if (finishMode === 'colors') {
                 // Apply individual colors
-                const partId = configurableParts.find(partId => {
-                  const part = manifest.parts?.find(p => p.id === partId);
-                  return part?.meshSelectors?.includes(child.name);
-                });
-
-                if (partId && selectedColors[partId]) {
+                if (selectedColors[partId]) {
                   const colorOption = manifest.finishModes.colors?.options?.find(
                     option => option.id === selectedColors[partId]
                   );
-                  
                   if (colorOption) {
-                    materialToApply = createMaterialFromDefinition(colorOption.material);
+                    materialToApply = createMaterialFromDefinition(colorOption.material, partId);
                     console.log('RifleModel: Applied color', selectedColors[partId], 'to part:', partId, 'mesh:', child.name);
                   }
                 }
@@ -349,7 +354,7 @@ function RifleModel({ productPath }: { productPath: string }) {
         }
       });
     }
-  }, [finishMode, selectedPattern, selectedColors, manifest, stableScene]);
+  }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene]);
 
   return (
     <Center>
@@ -377,7 +382,7 @@ export function TestModelViewer({ productPath }: { productPath: string }) {
     <>
       <OrbitControls
         makeDefault
-        minDistance={9} // or whatever value you set
+        minDistance={9}
         maxDistance={15}
         target={[0, 0, 0]}
         enableZoom={true}

@@ -22,6 +22,7 @@ export interface ConfigState {
   finishMode: FinishMode;
   selectedPattern: string | null;  // For pattern mode
   selectedColors: Record<string, string>; // partId -> colorId (for color mode)
+  partColorOverrides: Record<string, string>; // partId -> colorId (overrides pattern with color)
   
   // Legacy selection state (for backward compatibility)
   selectedOptions: Record<string, string>; // partId -> optionId
@@ -33,7 +34,7 @@ export interface ConfigState {
   isCinemaMode: boolean;
   isConfirmationMode: boolean;
   qualityMode: 'high' | 'low';
-  hideHotspots: boolean; // NEW: For hiding hotspots during export
+  hideHotspots: boolean; // For hiding hotspots during export
   
   // Configuration Panel state (OLD)
   configPanelOpen: boolean;
@@ -61,6 +62,8 @@ export interface ConfigState {
   selectPattern: (patternId: string) => void;
   selectPartColor: (partId: string, colorId: string) => void;
   applyColorToAllParts: (colorId: string) => void;
+  setPartColorOverride: (partId: string, colorId: string | null) => void;
+  clearPartColorOverride: (partId: string) => void;
   
   // Legacy actions (for backward compatibility)
   selectOption: (partId: string, optionId: string) => void;
@@ -71,7 +74,7 @@ export interface ConfigState {
   setCinemaMode: (enabled: boolean) => void;
   setConfirmationMode: (enabled: boolean) => void;
   setQualityMode: (mode: 'high' | 'low') => void;
-  setHideHotspots: (hide: boolean) => void; // NEW
+  setHideHotspots: (hide: boolean) => void;
   setCameraPreset: (preset: CameraPreset) => void;
   setCustomCameraState: (state: CameraState | null) => void;
   updateHotspot: (partId: string, position: [number, number, number]) => void;
@@ -109,6 +112,7 @@ export const useConfigStore = create<ConfigState>()(
       finishMode: 'colors',
       selectedPattern: null,
       selectedColors: {},
+      partColorOverrides: {},
       
       // Legacy state
       selectedOptions: {},
@@ -119,7 +123,7 @@ export const useConfigStore = create<ConfigState>()(
       isCinemaMode: false,
       isConfirmationMode: false,
       qualityMode: 'high',
-      hideHotspots: false, // NEW: Initially visible
+      hideHotspots: false,
       cameraPreset: 'hero',
       customCameraState: null,
       computedHotspots: [],
@@ -159,11 +163,12 @@ export const useConfigStore = create<ConfigState>()(
           manifest,
           productPath,
           selectedColors: defaultColors,
-          selectedOptions: defaultOptions, // Legacy compatibility
+          selectedOptions: defaultOptions,
           computedHotspots: manifest.hotspots,
           configId: generateConfigId(),
           finishMode: 'colors',
           selectedPattern: null,
+          partColorOverrides: {},
         });
       },
 
@@ -180,15 +185,23 @@ export const useConfigStore = create<ConfigState>()(
         console.log('Selecting pattern:', patternId);
         set({ 
           selectedPattern: patternId,
-          finishMode: 'patterns', // Auto-switch to pattern mode
+          finishMode: 'patterns',
           configId: generateConfigId(),
         });
       },
 
       selectPartColor: (partId: string, colorId: string) => {
         console.log('Selecting color for part:', partId, 'color:', colorId);
-        const { selectedColors } = get();
+        const { selectedColors, finishMode } = get();
         
+        // If in pattern mode, this is an override
+        if (finishMode === 'patterns') {
+          console.log('🚀 In pattern mode, calling setPartColorOverride');
+          get().setPartColorOverride(partId, colorId);
+          return;
+        }
+        
+        // Otherwise, normal color mode behavior
         const newColors = { ...selectedColors, [partId]: colorId };
         
         // Auto-sync carry handle with handle clamp
@@ -202,7 +215,7 @@ export const useConfigStore = create<ConfigState>()(
         
         set({ 
           selectedColors: newColors,
-          finishMode: 'colors', // Auto-switch to color mode
+          finishMode: 'colors',
           configId: generateConfigId(),
         });
       },
@@ -224,6 +237,34 @@ export const useConfigStore = create<ConfigState>()(
           finishMode: 'colors',
           configId: generateConfigId(),
         });
+      },
+
+      setPartColorOverride: (partId: string, colorId: string | null) => {
+        const { partColorOverrides } = get();
+        console.log('🔧 setPartColorOverride called:', { partId, colorId, currentOverrides: partColorOverrides });
+        
+        if (colorId === null) {
+          // Remove override
+          const newOverrides = { ...partColorOverrides };
+          delete newOverrides[partId];
+          console.log('🔧 Removing override, new overrides:', newOverrides);
+          set({ partColorOverrides: newOverrides, configId: generateConfigId() });
+        } else {
+          // Set override
+          const newOverrides = { ...partColorOverrides, [partId]: colorId };
+          console.log('🔧 Adding override, new overrides:', newOverrides);
+          set({ 
+            partColorOverrides: newOverrides,
+            configId: generateConfigId()
+          });
+        }
+      },
+
+      clearPartColorOverride: (partId: string) => {
+        const { partColorOverrides } = get();
+        const newOverrides = { ...partColorOverrides };
+        delete newOverrides[partId];
+        set({ partColorOverrides: newOverrides, configId: generateConfigId() });
       },
 
       // Legacy actions (for backward compatibility)
@@ -282,7 +323,7 @@ export const useConfigStore = create<ConfigState>()(
 
       setQualityMode: (mode) => set({ qualityMode: mode }),
 
-      setHideHotspots: (hide: boolean) => set({ hideHotspots: hide }), // NEW
+      setHideHotspots: (hide: boolean) => set({ hideHotspots: hide }),
 
       setCameraPreset: (preset) => set({ cameraPreset: preset }),
 
@@ -326,15 +367,15 @@ export const useConfigStore = create<ConfigState>()(
           selectedPattern: null,
           selectedColors: defaultColors,
           selectedOptions: defaultOptions,
+          partColorOverrides: {},
           activePartId: null,
           activeGroupId: null,
           isCinemaMode: false,
           isConfirmationMode: false,
-          hideHotspots: false, // NEW: Reset to visible
+          hideHotspots: false,
           cameraPreset: 'hero',
           customCameraState: null,
           configId: generateConfigId(),
-          // Reset both panel types
           configPanelOpen: false,
           configPanelPartId: null,
           modalOpen: false,
@@ -345,13 +386,16 @@ export const useConfigStore = create<ConfigState>()(
       generateNewConfigId: () => set({ configId: generateConfigId() }),
 
       getSelectedMaterials: () => {
-        const { manifest, finishMode, selectedPattern, selectedColors, selectedOptions } = get();
+        const { manifest, finishMode, selectedPattern, selectedColors, selectedOptions, partColorOverrides } = get();
+        console.log('🎨 getSelectedMaterials called:', { finishMode, selectedPattern, partColorOverrides });
+        
         if (!manifest) return {};
 
         const materials: Record<string, any> = {};
 
         if (finishMode === 'patterns' && selectedPattern) {
-          // Pattern mode: apply one pattern to all configurable parts
+          console.log('🎨 Pattern mode with pattern:', selectedPattern);
+          // Pattern mode: apply pattern to all parts, but respect color overrides
           const patternOption = manifest.finishModes?.patterns?.options?.find(
             option => option.id === selectedPattern
           );
@@ -359,11 +403,32 @@ export const useConfigStore = create<ConfigState>()(
           if (patternOption) {
             const configurableParts = manifest.configurableParts || [];
             configurableParts.forEach(partId => {
-              const part = manifest.parts?.find(p => p.id === partId);
-              if (part) {
-                part.meshSelectors?.forEach(selector => {
-                  materials[selector] = patternOption.material;
-                });
+              // Check if this part has a color override
+              const colorOverride = partColorOverrides[partId];
+              
+              if (colorOverride) {
+                console.log('🎨 Part', partId, 'has color override:', colorOverride);
+                // Use the color override instead of pattern
+                const colorOption = manifest.finishModes?.colors?.options?.find(
+                  option => option.id === colorOverride
+                );
+                if (colorOption) {
+                  const part = manifest.parts?.find(p => p.id === partId);
+                  if (part) {
+                    part.meshSelectors?.forEach(selector => {
+                      materials[selector] = colorOption.material;
+                      console.log('🎨 Applied color override to mesh:', selector);
+                    });
+                  }
+                }
+              } else {
+                // Use the pattern
+                const part = manifest.parts?.find(p => p.id === partId);
+                if (part) {
+                  part.meshSelectors?.forEach(selector => {
+                    materials[selector] = patternOption.material;
+                  });
+                }
               }
             });
           }
@@ -403,6 +468,7 @@ export const useConfigStore = create<ConfigState>()(
           });
         }
 
+        console.log('🎨 Final materials:', materials);
         return materials;
       },
 
@@ -413,6 +479,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedPattern, 
           selectedColors, 
           selectedOptions, 
+          partColorOverrides,
           configId 
         } = get();
         
@@ -423,7 +490,8 @@ export const useConfigStore = create<ConfigState>()(
           finishMode,
           selectedPattern,
           selectedColors,
-          selectedOptions, // Legacy compatibility
+          partColorOverrides,
+          selectedOptions,
           timestamp: new Date().toISOString(),
         };
       },
@@ -434,7 +502,6 @@ export const useConfigStore = create<ConfigState>()(
       setConfigPanelPartId: (partId: string | null) => set({ configPanelPartId: partId }),
       
       updateConfiguration: (partId: string, optionId: string) => {
-        // This could now handle both legacy and new systems
         get().selectOption(partId, optionId);
       },
       
@@ -460,7 +527,8 @@ export const useConfigStore = create<ConfigState>()(
         finishMode: state.finishMode,
         selectedPattern: state.selectedPattern,
         selectedColors: state.selectedColors,
-        selectedOptions: state.selectedOptions, // Legacy compatibility
+        partColorOverrides: state.partColorOverrides,
+        selectedOptions: state.selectedOptions,
         configId: state.configId,
         qualityMode: state.qualityMode,
       }),

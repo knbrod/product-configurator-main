@@ -114,13 +114,18 @@ function LuxuryConfigModal() {
     selectedColors,
     selectedPattern,
     selectedOptions,
+    partColorOverrides,
     setModalOpen,
     selectOption,
     selectPartColor,
     selectPattern,
     setFinishMode,
+    clearPartColorOverride,
     getPartUIGroup
   } = useConfigStore();
+
+  // Local state for pattern mode: show patterns or show color overrides
+  const [showingOverride, setShowingOverride] = useState(false);
 
   // Debug logging
   console.log('Modal state:', { modalOpen, modalPartId, manifest: !!manifest, finishMode });
@@ -131,12 +136,20 @@ function LuxuryConfigModal() {
   if (!part) return null;
 
   const uiGroup = getPartUIGroup(modalPartId);
+  
+  // Check if this part has a color override in pattern mode
+  const hasColorOverride = finishMode === 'patterns' && partColorOverrides[modalPartId];
 
-  // Get available options based on finish mode and manifest structure
+  // Get available options based on what we're showing
   const getAvailableOptions = () => {
     if (manifest.finishModes && finishMode === 'patterns') {
-      // For patterns mode, show all pattern options regardless of part
-      return manifest.finishModes.patterns.options || [];
+      if (showingOverride) {
+        // Show colors for override
+        return manifest.finishModes.colors.options || [];
+      } else {
+        // Show patterns for whole rifle
+        return manifest.finishModes.patterns.options || [];
+      }
     }
     
     if (manifest.finishModes && finishMode === 'colors') {
@@ -155,10 +168,16 @@ function LuxuryConfigModal() {
 
   const availableOptions = getAvailableOptions();
 
-  // Get current selection based on system
+  // Get current selection
   const getCurrentSelection = () => {
     if (manifest.finishModes && finishMode === 'patterns') {
-      return selectedPattern;
+      if (showingOverride) {
+        // Show color override selection
+        return partColorOverrides[modalPartId] || null;
+      } else {
+        // Show pattern selection
+        return selectedPattern;
+      }
     }
     if (manifest.finishModes && finishMode === 'colors') {
       return selectedColors[modalPartId];
@@ -169,11 +188,21 @@ function LuxuryConfigModal() {
   const currentSelection = getCurrentSelection();
 
   const handleOptionSelect = (optionId: string) => {
+    console.log('Option selected:', { optionId, finishMode, showingOverride, modalPartId });
+    
     if (manifest.finishModes && finishMode === 'patterns') {
-      // For patterns, apply to entire rifle
-      selectPattern(optionId);
+      if (showingOverride) {
+        // Set color override for this part
+        console.log('Setting color override for part:', modalPartId, 'color:', optionId);
+        selectPartColor(modalPartId, optionId);
+      } else {
+        // Select pattern for whole rifle
+        console.log('Selecting pattern for whole rifle:', optionId);
+        selectPattern(optionId);
+      }
     } else if (manifest.finishModes && finishMode === 'colors') {
       // For colors, apply to specific part
+      console.log('Selecting color for part:', modalPartId, 'color:', optionId);
       selectPartColor(modalPartId, optionId);
     } else {
       // Legacy system
@@ -181,11 +210,17 @@ function LuxuryConfigModal() {
     }
   };
 
-  const handleClose = () => {
-    setModalOpen(false);
+  const handleResetToPattern = () => {
+    clearPartColorOverride(modalPartId);
+    setShowingOverride(false);
   };
 
-  // Get material color helper - updated for new material structure
+  const handleClose = () => {
+    setModalOpen(false);
+    setShowingOverride(false);
+  };
+
+  // Get material color helper
   const getMaterialColor = (material: any): string => {
     if (material && typeof material === 'object') {
       // New system
@@ -302,8 +337,13 @@ function LuxuryConfigModal() {
           <div>
             <div style={{ fontSize: '14px', color: '#BA2025', fontWeight: 'bold' }}>CheyTac USA</div>
             <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>
-              {finishMode === 'patterns' ? 'Tactical Patterns' : part.label}
+              {part.label}
             </div>
+            {finishMode === 'patterns' && hasColorOverride && (
+              <div style={{ fontSize: '12px', color: '#4ade80', marginTop: '4px' }}>
+                ✓ Color Override Active
+              </div>
+            )}
           </div>
           <button 
             onClick={handleClose}
@@ -364,10 +404,74 @@ function LuxuryConfigModal() {
           </button>
         </div>
 
+        {/* Pattern Mode: Toggle between Pattern selection and Color override */}
+        {finishMode === 'patterns' && (
+          <div style={{
+            display: 'flex',
+            backgroundColor: 'rgba(255,255,255,0.05)',
+            borderRadius: '8px',
+            padding: '4px',
+            marginBottom: '15px'
+          }}>
+            <button
+              onClick={() => setShowingOverride(false)}
+              style={{
+                flex: 1,
+                padding: '8px',
+                backgroundColor: !showingOverride ? 'rgba(186, 32, 37, 0.3)' : 'transparent',
+                color: !showingOverride ? 'white' : '#888',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '13px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Rifle Pattern
+            </button>
+            <button
+              onClick={() => setShowingOverride(true)}
+              style={{
+                flex: 1,
+                padding: '8px',
+                backgroundColor: showingOverride ? 'rgba(186, 32, 37, 0.3)' : 'transparent',
+                color: showingOverride ? 'white' : '#888',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '13px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Override Part
+            </button>
+          </div>
+        )}
+
+        {/* Info Banner */}
+        {finishMode === 'patterns' && showingOverride && (
+          <div style={{
+            backgroundColor: 'rgba(186, 32, 37, 0.2)',
+            border: '1px solid #BA2025',
+            borderRadius: '8px',
+            padding: '12px',
+            marginBottom: '15px',
+            fontSize: '13px',
+            color: '#ccc'
+          }}>
+            💡 Select a color to override the pattern for <strong>{part.label}</strong> only
+          </div>
+        )}
+
         {/* Configuration Section */}
         <div>
           <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '15px', color: 'white' }}>
-            {finishMode === 'patterns' ? 'Available Patterns' : 'Available Colors'} ({availableOptions.length})
+            {finishMode === 'patterns' 
+              ? (showingOverride ? `Override ${part.label}` : 'Select Pattern')
+              : 'Available Colors'
+            } ({availableOptions.length})
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
@@ -424,15 +528,35 @@ function LuxuryConfigModal() {
           </div>
         </div>
 
-        {/* Footer - SINGLE CENTERED BUTTON */}
+        {/* Footer */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center',
+          gap: '10px',
           marginTop: '16px',
           paddingTop: '12px',
           borderTop: '1px solid rgba(255,255,255,0.2)',
           flexShrink: 0
         }}>
+          {/* Reset to Pattern button - only show if part has color override */}
+          {hasColorOverride && (
+            <button 
+              onClick={handleResetToPattern}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: 'transparent',
+                border: '2px solid #BA2025',
+                color: '#BA2025',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '14px'
+              }}
+            >
+              Reset to Pattern
+            </button>
+          )}
+          
           <button 
             onClick={handleClose}
             style={{
@@ -446,7 +570,7 @@ function LuxuryConfigModal() {
               fontSize: '14px'
             }}
           >
-            Confirm Selection
+            Confirm
           </button>
         </div>
 
