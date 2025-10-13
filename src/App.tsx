@@ -127,7 +127,7 @@ function App() {
       const manifestData = await response.json();
       const validatedManifest = validateManifest(manifestData);
       
-     loadManifest(validatedManifest, 'https://cheytac-assets.sfo3.digitaloceanspaces.com');
+     loadManifest(validatedManifest, '/products/example-product');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
       console.error('Failed to load product manifest:', err);
@@ -187,7 +187,7 @@ function App() {
         }}
         shadows
       >
-        <TestModelViewer productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com" />
+       <TestModelViewer productPath="/products/example-product" />
         <LuxuryConfigurator />
       </Canvas>
       
