@@ -32,6 +32,7 @@ function App() {
   const [modelLoading, setModelLoading] = useState(true);
   const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
   const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false); // Track if user acknowledged
   const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([2, 1, 4]);
 
   // Single-view export function
@@ -217,7 +218,10 @@ function App() {
           productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com"
           onLoadComplete={() => {
             setModelLoading(false);
-            setShowDisclaimer(true); // Show disclaimer after loading
+            // Only show disclaimer if user hasn't acknowledged it yet
+            if (!disclaimerAcknowledged) {
+              setShowDisclaimer(true);
+            }
           }}
         />
         <LuxuryConfigurator />
@@ -338,6 +342,7 @@ function App() {
             if (e.target === e.currentTarget) {
               console.log('Closing from background click');
               setShowDisclaimer(false);
+              setDisclaimerAcknowledged(true);
             }
           }}
           style={{
@@ -440,9 +445,9 @@ function App() {
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Button MOUSEDOWN');
-                alert('Button clicked!');
+                console.log('Button MOUSEDOWN - closing modal');
                 setShowDisclaimer(false);
+                setDisclaimerAcknowledged(true);
               }}
               onClick={(e) => {
                 e.preventDefault();
