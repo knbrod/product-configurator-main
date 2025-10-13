@@ -32,6 +32,7 @@ function App() {
   const [modelLoading, setModelLoading] = useState(true);
   const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
   const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
+  const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([2, 1, 4]);
 
   // Single-view export function
   const handleExport = async () => {
@@ -116,10 +117,20 @@ function App() {
   useEffect(() => {
     loadProductManifest();
     
-    // Auto-expand ITAR notice on desktop
+    // Set responsive camera position and ITAR collapse state
     const handleResize = () => {
-      if (window.innerWidth > 768) {
+      const isMobile = window.innerWidth <= 768;
+      
+      // Expand ITAR on desktop
+      if (!isMobile) {
         setItarCollapsed(false);
+      }
+      
+      // Set camera position based on device
+      if (isMobile) {
+        setCameraPosition([2, 1, 6]); // More zoomed out on mobile (increased z from 4 to 6)
+      } else {
+        setCameraPosition([2, 1, 4]); // Default desktop position
       }
     };
     
@@ -189,7 +200,7 @@ function App() {
     <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(to bottom right, #efddddd3, #000000)' }}>
       <Canvas 
         camera={{ 
-          position: [2, 1, 4], 
+          position: cameraPosition, 
           fov: 75,
           near: 0.1,
           far: 1000
