@@ -31,6 +31,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(true);
   const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
+  const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
 
   // Single-view export function
   const handleExport = async () => {
@@ -202,7 +203,10 @@ function App() {
       >
         <TestModelViewer 
           productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com"
-          onLoadComplete={() => setModelLoading(false)}
+          onLoadComplete={() => {
+            setModelLoading(false);
+            setShowDisclaimer(true); // Show disclaimer after loading
+          }}
         />
         <LuxuryConfigurator />
       </Canvas>
@@ -313,6 +317,134 @@ function App() {
         )}
       </div>
 
+      {/* Visualization Disclaimer Modal */}
+      {showDisclaimer && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px',
+          animation: 'fadeIn 0.3s ease-in'
+        }}>
+          <div 
+            className="disclaimer-modal-content"
+            style={{
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+            borderRadius: '12px',
+            padding: '40px',
+            maxWidth: '600px',
+            width: '100%',
+            border: '2px solid #ba2025',
+            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+            animation: 'slideUp 0.4s ease-out'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <img 
+                src="/logo.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: '60px', 
+                  width: 'auto',
+                  marginBottom: '20px'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '10px',
+                letterSpacing: '0.5px'
+              }}>
+                VISUALIZATION NOTICE
+              </h2>
+            </div>
+
+            <div style={{
+              color: '#e5e5e5',
+              fontSize: '16px',
+              lineHeight: '1.6',
+              marginBottom: '30px',
+              textAlign: 'left'
+            }}>
+              <p style={{ marginBottom: '15px' }}>
+                This configurator is designed for <strong style={{ color: '#BA2025' }}>visualization purposes only</strong>.
+              </p>
+              
+              <p style={{ marginBottom: '15px' }}>
+                <strong>Please Note:</strong>
+              </p>
+              
+              <ul style={{ 
+                paddingLeft: '20px',
+                marginBottom: '15px',
+                listStyle: 'disc'
+              }}>
+                <li style={{ marginBottom: '8px' }}>
+                  Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen
+                </li>
+                <li style={{ marginBottom: '8px' }}>
+                  Actual finish patterns and colors <strong>may vary</strong> from digital representations
+                </li>
+                <li style={{ marginBottom: '8px' }}>
+                  Variations in texture, tone, and pattern placement are normal and expected
+                </li>
+                <li style={{ marginBottom: '8px' }}>
+                  This tool provides an <strong>approximate preview</strong> of your configuration
+                </li>
+              </ul>
+
+              <p style={{ 
+                fontSize: '14px',
+                color: '#999',
+                fontStyle: 'italic'
+              }}>
+                For exact finish specifications, please contact our sales team.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setShowDisclaimer(false)}
+              style={{
+                width: '100%',
+                background: '#BA2025',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px 24px',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                letterSpacing: '0.5px',
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = '#9a1a1f';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(186, 32, 37, 0.5)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = '#BA2025';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(186, 32, 37, 0.4)';
+              }}
+            >
+              I UNDERSTAND — CONTINUE TO CONFIGURATOR
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3D Model Loading Overlay */}
       {modelLoading && (
         <div style={{
@@ -382,6 +514,17 @@ function App() {
           to { opacity: 1; }
         }
         
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
         .export-toast {
           position: fixed;
           top: 100px;
@@ -442,6 +585,22 @@ function App() {
         @media (min-width: 769px) {
           .itar-notice {
             max-width: 280px !important;
+          }
+        }
+        
+        /* Mobile styles for disclaimer modal */
+        @media (max-width: 600px) {
+          .disclaimer-modal-content {
+            padding: 30px 20px !important;
+            font-size: 14px !important;
+          }
+          
+          .disclaimer-modal-content h2 {
+            font-size: 20px !important;
+          }
+          
+          .disclaimer-modal-content img {
+            height: 50px !important;
           }
         }
       `}</style>
