@@ -34,6 +34,10 @@ function App() {
   const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
   const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false); // Track if user acknowledged
   const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([2, 1, 4]);
+  const [showOrderModal, setShowOrderModal] = useState(false); // Order process modal
+  const [customerName, setCustomerName] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Single-view export function
   const handleExport = async () => {
@@ -112,6 +116,143 @@ function App() {
       if (exportButton && originalButtonDisplay !== undefined) {
         exportButton.style.display = originalButtonDisplay;
       }
+    }
+  };
+
+  // Handle order process submission
+  const handleStartOrder = async () => {
+    if (!customerName || !customerEmail) {
+      showToast('Please enter your name and email', 'error');
+      return;
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail)) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Get configuration state from store
+      const state = useConfigStore.getState();
+      const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
+      
+      if (!manifest) {
+        throw new Error('No manifest loaded');
+      }
+
+      // Helper function to get finish name by ID
+      const getFinishName = (finishId: string, isPattern: boolean = false): string => {
+        if (isPattern) {
+          const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === finishId);
+          return pattern?.label || finishId;
+        } else {
+          const color = manifest.finishModes?.colors?.options?.find(opt => opt.id === finishId);
+          return color?.label || finishId;
+        }
+      };
+
+      // Helper function to get part finish
+      const getPartFinish = (partId: string): string => {
+        // Check for color override first (when in pattern mode)
+        if (finishMode === 'patterns' && partColorOverrides[partId]) {
+          return getFinishName(partColorOverrides[partId], false);
+        }
+        
+        // If in pattern mode, return pattern name
+        if (finishMode === 'patterns' && selectedPattern) {
+          return getFinishName(selectedPattern, true);
+        }
+        
+        // Otherwise return color
+        const colorId = selectedColors[partId];
+        return colorId ? getFinishName(colorId, false) : 'Not specified';
+      };
+      
+      // Capture screenshot
+      const canvas = document.querySelector('canvas');
+      let screenshot = '';
+      
+      if (canvas) {
+        // Hide UI temporarily
+        const itarNotice = document.querySelector('.itar-notice') as HTMLElement;
+        const buttons = document.querySelectorAll('button');
+        
+        const originalDisplay = itarNotice?.style.display;
+        const originalButtonDisplays: string[] = [];
+        
+        if (itarNotice) itarNotice.style.display = 'none';
+        buttons.forEach((btn, i) => {
+          originalButtonDisplays[i] = btn.style.display;
+          btn.style.display = 'none';
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (gl) gl.finish();
+
+        screenshot = canvas.toDataURL('image/png');
+
+        // Restore UI
+        if (itarNotice && originalDisplay !== undefined) {
+          itarNotice.style.display = originalDisplay;
+        }
+        buttons.forEach((btn, i) => {
+          if (originalButtonDisplays[i] !== undefined) {
+            btn.style.display = originalButtonDisplays[i];
+          }
+        });
+      }
+
+      // Prepare configuration data
+      const configData = {
+        receiver_finish: getPartFinish('receiver'),
+        barrel_finish: getPartFinish('barrel'),
+        stock_finish: getPartFinish('stock'),
+        bolt_finish: getPartFinish('boltBody'),
+        magazine_finish: getPartFinish('magazine'),
+        bipod_finish: getPartFinish('bipodMonopod'),
+        muzzle_finish: getPartFinish('muzzleBrake'),
+        pattern_name: finishMode === 'patterns' && selectedPattern 
+          ? getFinishName(selectedPattern, true) 
+          : 'Custom Configuration',
+        customer_name: customerName,
+        customer_email: customerEmail,
+        screenshot: screenshot
+      };
+
+      console.log('Sending configuration data:', configData);
+
+      // Send to WordPress endpoint
+      const response = await fetch('https://cheytac.com/wp-json/configurator/v1/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(configData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast('Configuration saved! Redirecting to product page...', 'success');
+        
+        // Redirect to M200 product page with config_id
+        setTimeout(() => {
+          window.location.href = result.redirect_url;
+        }, 1500);
+      } else {
+        throw new Error('Failed to save configuration');
+      }
+
+    } catch (error) {
+      console.error('Order submission failed:', error);
+      showToast('Failed to start order. Please try again.', 'error');
+      setIsSubmitting(false);
     }
   };
 
@@ -246,17 +387,44 @@ function App() {
         />
       </div>
       
-      {/* Export Button */}
+      {/* Export and Order Buttons */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
         right: '20px',
-        zIndex: 1000
+        zIndex: 1000,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
       }}>
+        <button
+          onClick={() => setShowOrderModal(true)}
+          style={{
+            background: '#BA2025',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '14px 20px',
+            fontSize: '15px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+            letterSpacing: '0.5px'
+          }}
+        >
+          🛒 START ORDER PROCESS
+        </button>
+        
         <button
           onClick={handleExport}
           style={{
-            background: '#ba2025',
+            background: '#4a4a4a',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -475,6 +643,191 @@ function App() {
         </div>
       )}
 
+      {/* Order Process Modal */}
+      {showOrderModal && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmitting) {
+              setShowOrderModal(false);
+            }
+          }}
+          style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '20px',
+          animation: 'fadeIn 0.3s ease-in',
+          cursor: 'pointer'
+        }}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+            borderRadius: '12px',
+            padding: '40px',
+            maxWidth: '500px',
+            width: '100%',
+            border: '2px solid #ba2025',
+            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+            animation: 'slideUp 0.4s ease-out',
+            cursor: 'default'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <img 
+                src="/logo.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: '60px', 
+                  width: 'auto',
+                  marginBottom: '20px'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '10px',
+                letterSpacing: '0.5px'
+              }}>
+                START ORDER PROCESS
+              </h2>
+              <p style={{
+                color: '#aaa',
+                fontSize: '14px'
+              }}>
+                We'll save your configuration and take you to complete your M200 order
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px'
+              }}>
+                Your Name *
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="John Doe"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px'
+              }}>
+                Email Address *
+              </label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="john@example.com"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px'
+            }}>
+              <button
+                onClick={() => {
+                  if (!isSubmitting) {
+                    setShowOrderModal(false);
+                    setCustomerName('');
+                    setCustomerEmail('');
+                  }
+                }}
+                disabled={isSubmitting}
+                style={{
+                  flex: 1,
+                  background: '#4a4a4a',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              
+              <button
+                onClick={handleStartOrder}
+                disabled={isSubmitting}
+                style={{
+                  flex: 1,
+                  background: isSubmitting ? '#8B1519' : '#BA2025',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: '700',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
+                }}
+              >
+                {isSubmitting ? 'Processing...' : 'Continue to Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 3D Model Loading Overlay */}
       {modelLoading && (
         <div style={{
@@ -604,7 +957,7 @@ function App() {
         /* Mobile responsive fix - prevents ITAR notice and Export button overlap */
         @media (max-width: 768px) {
           .itar-notice {
-            bottom: 100px !important;
+            bottom: 150px !important;
             left: 10px !important;
             right: auto !important;
             font-size: 10px !important;
