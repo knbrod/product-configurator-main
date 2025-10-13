@@ -333,6 +333,13 @@ function App() {
       {/* Visualization Disclaimer Modal */}
       {showDisclaimer && (
         <div 
+          onClick={(e) => {
+            console.log('Background clicked');
+            if (e.target === e.currentTarget) {
+              console.log('Closing from background click');
+              setShowDisclaimer(false);
+            }
+          }}
           style={{
           position: 'fixed',
           top: 0,
@@ -346,10 +353,11 @@ function App() {
           zIndex: 999999,
           padding: '20px',
           animation: 'fadeIn 0.3s ease-in',
-          pointerEvents: 'auto'
+          cursor: 'pointer'
         }}>
           <div 
             className="disclaimer-modal-content"
+            onClick={(e) => e.stopPropagation()}
             style={{
             background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
             borderRadius: '12px',
@@ -359,9 +367,7 @@ function App() {
             border: '2px solid #ba2025',
             boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
             animation: 'slideUp 0.4s ease-out',
-            pointerEvents: 'auto',
-            position: 'relative',
-            zIndex: 1000000
+            cursor: 'default'
           }}>
             <div style={{
               textAlign: 'center',
@@ -431,9 +437,17 @@ function App() {
             </div>
 
             <button
-              onClick={() => {
-                console.log('Disclaimer button clicked - closing modal');
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Button MOUSEDOWN');
+                alert('Button clicked!');
                 setShowDisclaimer(false);
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Button CLICK');
               }}
               type="button"
               style={{
@@ -446,24 +460,8 @@ function App() {
                 fontSize: '16px',
                 fontWeight: '700',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
                 letterSpacing: '0.5px',
-                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
-                pointerEvents: 'auto',
-                position: 'relative',
-                zIndex: 1000001
-              }}
-              onMouseOver={(e) => {
-                const target = e.currentTarget;
-                target.style.background = '#9a1a1f';
-                target.style.transform = 'translateY(-2px)';
-                target.style.boxShadow = '0 6px 16px rgba(186, 32, 37, 0.5)';
-              }}
-              onMouseOut={(e) => {
-                const target = e.currentTarget;
-                target.style.background = '#BA2025';
-                target.style.transform = 'translateY(0)';
-                target.style.boxShadow = '0 4px 12px rgba(186, 32, 37, 0.4)';
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
               }}
             >
               I UNDERSTAND — CONTINUE TO CONFIGURATOR
