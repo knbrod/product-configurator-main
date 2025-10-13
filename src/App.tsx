@@ -386,6 +386,18 @@ function App() {
             opacity: 0;
           }
         }
+        
+        /* Mobile responsive fix - prevents ITAR notice and Export button overlap */
+        @media (max-width: 768px) {
+          .itar-notice {
+            bottom: 100px !important;
+            left: 10px !important;
+            right: 10px !important;
+            max-width: calc(100% - 20px) !important;
+            font-size: 10px !important;
+            padding: 12px !important;
+          }
+        }
       `}</style>
     </div>
   );
