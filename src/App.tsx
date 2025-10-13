@@ -330,7 +330,8 @@ function App() {
 
       {/* Visualization Disclaimer Modal */}
       {showDisclaimer && (
-        <div style={{
+        <div 
+          style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -342,7 +343,8 @@ function App() {
           justifyContent: 'center',
           zIndex: 10000,
           padding: '20px',
-          animation: 'fadeIn 0.3s ease-in'
+          animation: 'fadeIn 0.3s ease-in',
+          pointerEvents: 'auto'
         }}>
           <div 
             className="disclaimer-modal-content"
@@ -354,7 +356,10 @@ function App() {
             width: '100%',
             border: '2px solid #ba2025',
             boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
-            animation: 'slideUp 0.4s ease-out'
+            animation: 'slideUp 0.4s ease-out',
+            pointerEvents: 'auto',
+            position: 'relative',
+            zIndex: 10001
           }}>
             <div style={{
               textAlign: 'center',
@@ -424,11 +429,11 @@ function App() {
             </div>
 
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
+              onClick={() => {
+                console.log('Disclaimer button clicked - closing modal');
                 setShowDisclaimer(false);
               }}
+              type="button"
               style={{
                 width: '100%',
                 background: '#BA2025',
@@ -441,17 +446,22 @@ function App() {
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 letterSpacing: '0.5px',
-                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+                pointerEvents: 'auto',
+                position: 'relative',
+                zIndex: 10002
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = '#9a1a1f';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(186, 32, 37, 0.5)';
+                const target = e.currentTarget;
+                target.style.background = '#9a1a1f';
+                target.style.transform = 'translateY(-2px)';
+                target.style.boxShadow = '0 6px 16px rgba(186, 32, 37, 0.5)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.background = '#BA2025';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(186, 32, 37, 0.4)';
+                const target = e.currentTarget;
+                target.style.background = '#BA2025';
+                target.style.transform = 'translateY(0)';
+                target.style.boxShadow = '0 4px 12px rgba(186, 32, 37, 0.4)';
               }}
             >
               I UNDERSTAND — CONTINUE TO CONFIGURATOR
