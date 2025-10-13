@@ -13,7 +13,7 @@ export function createMaterialFromManifest(materialDef: Material): THREE.MeshSta
     material.color.set(materialDef.color);
     material.metalness = materialDef.metalness;
     material.roughness = materialDef.roughness;
-  } else {
+  } else if ('pbrMetallicRoughness' in materialDef) {
     // PBR material
     const pbr = materialDef.pbrMetallicRoughness;
     

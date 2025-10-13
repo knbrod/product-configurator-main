@@ -340,7 +340,7 @@ function LuxuryConfigModal() {
               {part.label}
             </div>
             {finishMode === 'patterns' && hasColorOverride && (
-              <div style={{ fontSize: '12px', color: '#4ade80', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: '#ba2025', marginTop: '4px' }}>
                 ✓ Color Override Active
               </div>
             )}
@@ -418,7 +418,7 @@ function LuxuryConfigModal() {
               style={{
                 flex: 1,
                 padding: '8px',
-                backgroundColor: !showingOverride ? 'rgba(186, 32, 37, 0.3)' : 'transparent',
+                backgroundColor: !showingOverride ? '#ba2025df' : 'transparent',
                 color: !showingOverride ? 'white' : '#888',
                 border: 'none',
                 borderRadius: '6px',
@@ -435,7 +435,7 @@ function LuxuryConfigModal() {
               style={{
                 flex: 1,
                 padding: '8px',
-                backgroundColor: showingOverride ? 'rgba(186, 32, 37, 0.3)' : 'transparent',
+                backgroundColor: showingOverride ? '#ba2025df' : 'transparent',
                 color: showingOverride ? 'white' : '#888',
                 border: 'none',
                 borderRadius: '6px',
@@ -445,7 +445,7 @@ function LuxuryConfigModal() {
                 transition: 'all 0.2s ease'
               }}
             >
-              Override Part
+            Color Customization
             </button>
           </div>
         )}
@@ -453,7 +453,7 @@ function LuxuryConfigModal() {
         {/* Info Banner */}
         {finishMode === 'patterns' && showingOverride && (
           <div style={{
-            backgroundColor: 'rgba(186, 32, 37, 0.2)',
+            backgroundColor: '#ba2025df',
             border: '1px solid #BA2025',
             borderRadius: '8px',
             padding: '12px',
@@ -461,7 +461,7 @@ function LuxuryConfigModal() {
             fontSize: '13px',
             color: '#ccc'
           }}>
-            💡 Select a color to override the pattern for <strong>{part.label}</strong> only
+             Select a color to accent the pattern for <strong>{part.label}</strong> only
           </div>
         )}
 
@@ -469,9 +469,9 @@ function LuxuryConfigModal() {
         <div>
           <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '15px', color: 'white' }}>
             {finishMode === 'patterns' 
-              ? (showingOverride ? `Override ${part.label}` : 'Select Pattern')
+              ? (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
               : 'Available Colors'
-            } ({availableOptions.length})
+            }
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '300px', overflowY: 'auto' }}>
