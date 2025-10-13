@@ -38,6 +38,7 @@ function App() {
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false); // Share modal
 
   // Single-view export function
   const handleExport = async () => {
@@ -256,6 +257,105 @@ function App() {
     }
   };
 
+  // Handle share configuration
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
+
+  // Generate shareable URL and message
+  const getShareData = () => {
+    const state = useConfigStore.getState();
+    const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
+    
+    if (!manifest) {
+      return null;
+    }
+
+    // Create a shareable URL with configuration data
+    const configString = btoa(JSON.stringify({
+      finishMode,
+      selectedPattern,
+      selectedColors,
+      partColorOverrides
+    }));
+    
+    const shareUrl = `${window.location.origin}${window.location.pathname}?config=${configString}`;
+    
+    // Get pattern/color name for message
+    let configDescription = 'custom';
+    if (finishMode === 'patterns' && selectedPattern) {
+      const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === selectedPattern);
+      configDescription = pattern?.label || 'custom pattern';
+    } else if (finishMode === 'colors') {
+      configDescription = 'custom colors';
+    }
+
+    return {
+      url: shareUrl,
+      title: 'My Custom CheyTac M200',
+      text: `Check out my custom M200 with ${configDescription} that I built on CheyTac's configurator!`,
+      hashtags: 'CheyTac,M200,CustomRifle'
+    };
+  };
+
+  // Share to specific platform
+  const shareToplatform = (platform: string) => {
+    const shareData = getShareData();
+    if (!shareData) {
+      showToast('No configuration to share', 'error');
+      return;
+    }
+
+    const { url, text, title, hashtags } = shareData;
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}&hashtags=${hashtags}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+        break;
+      case 'pinterest':
+        shareUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&description=${encodeURIComponent(text)}`;
+        break;
+      case 'whatsapp':
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`;
+        break;
+      case 'email':
+        shareUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text + '\n\n' + url)}`;
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(`${text}\n\n${url}`);
+        showToast('Link copied to clipboard!', 'success');
+        setShowShareModal(false);
+        return;
+      case 'native':
+        if (navigator.share) {
+          navigator.share({ title, text, url })
+            .then(() => {
+              showToast('Configuration shared successfully!', 'success');
+              setShowShareModal(false);
+            })
+            .catch((error) => {
+              if (error.name !== 'AbortError') {
+                console.error('Share failed:', error);
+              }
+            });
+          return;
+        }
+        break;
+    }
+
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'width=600,height=400');
+      setShowShareModal(false);
+    }
+  };
+
   useEffect(() => {
     loadProductManifest();
     
@@ -278,6 +378,48 @@ function App() {
     
     handleResize(); // Check initial size
     window.addEventListener('resize', handleResize);
+    
+    // Load shared configuration from URL if present
+    const loadSharedConfig = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const configParam = urlParams.get('config');
+      
+      if (configParam) {
+        try {
+          const configData = JSON.parse(atob(configParam));
+          const store = useConfigStore.getState();
+          
+          // Apply the shared configuration
+          if (configData.finishMode) {
+            store.setFinishMode(configData.finishMode);
+          }
+          if (configData.selectedPattern) {
+            store.selectPattern(configData.selectedPattern);
+          }
+          if (configData.selectedColors) {
+            Object.entries(configData.selectedColors).forEach(([partId, colorId]) => {
+              store.selectPartColor(partId, colorId as string);
+            });
+          }
+          if (configData.partColorOverrides) {
+            Object.entries(configData.partColorOverrides).forEach(([partId, colorId]) => {
+              store.setPartColorOverride(partId, colorId as string);
+            });
+          }
+          
+          showToast('Loaded shared configuration!', 'success');
+          
+          // Clean URL without reloading
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch (error) {
+          console.error('Failed to load shared configuration:', error);
+        }
+      }
+    };
+    
+    // Load shared config after a short delay to ensure manifest is loaded
+    setTimeout(loadSharedConfig, 1000);
+    
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -387,7 +529,7 @@ function App() {
         />
       </div>
       
-      {/* Export and Order Buttons */}
+      {/* Export, Share, and Order Buttons */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
@@ -419,6 +561,28 @@ function App() {
           }}
         >
           🛒 START ORDER PROCESS
+        </button>
+        
+        <button
+          onClick={handleShare}
+          style={{
+            background: '#4a4a4a',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px'
+          }}
+        >
+          Share Configuration
         </button>
         
         <button
@@ -828,6 +992,314 @@ function App() {
         </div>
       )}
 
+      {/* Share Modal */}
+      {showShareModal && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowShareModal(false);
+            }
+          }}
+          style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '20px',
+          animation: 'fadeIn 0.3s ease-in',
+          cursor: 'pointer'
+        }}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+            borderRadius: '12px',
+            padding: '40px',
+            maxWidth: '450px',
+            width: '100%',
+            border: '2px solid #ba2025',
+            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+            animation: 'slideUp 0.4s ease-out',
+            cursor: 'default'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <img 
+                src="/logo.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: '60px', 
+                  width: 'auto',
+                  marginBottom: '20px'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: '24px',
+                fontWeight: '700',
+                marginBottom: '10px',
+                letterSpacing: '0.5px'
+              }}>
+                SHARE CONFIGURATION
+              </h2>
+              <p style={{
+                color: '#aaa',
+                fontSize: '14px'
+              }}>
+                Share your custom M200 build
+              </p>
+            </div>
+
+            {/* Social Media Buttons Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <button
+                onClick={() => shareToplatform('facebook')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                Facebook
+              </button>
+
+              <button
+                onClick={() => shareToplatform('twitter')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                Twitter / X
+              </button>
+
+              <button
+                onClick={() => shareToplatform('linkedin')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                LinkedIn
+              </button>
+
+              <button
+                onClick={() => shareToplatform('pinterest')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                Pinterest
+              </button>
+
+              <button
+                onClick={() => shareToplatform('whatsapp')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                WhatsApp
+              </button>
+
+              <button
+                onClick={() => shareToplatform('email')}
+                style={{
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                Email
+              </button>
+            </div>
+
+            {/* Copy Link Button */}
+            <button
+              onClick={() => shareToplatform('copy')}
+              style={{
+                width: '100%',
+                background: '#BA2025',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px',
+                fontSize: '15px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                marginBottom: '12px',
+                letterSpacing: '0.5px',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#9a1a1f'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#BA2025'}
+            >
+              Copy Link to Clipboard
+            </button>
+
+            {/* Native Share (if available) */}
+            {navigator.share && (
+              <button
+                onClick={() => shareToplatform('native')}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  borderRadius: '8px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  marginBottom: '12px',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = '#BA2025';
+                  e.currentTarget.style.borderColor = '#BA2025';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                }}
+              >
+                More Share Options
+              </button>
+            )}
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowShareModal(false)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                color: '#888',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                fontFamily: 'Inter, system-ui, sans-serif'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3D Model Loading Overlay */}
       {modelLoading && (
         <div style={{
@@ -954,10 +1426,10 @@ function App() {
           }
         }
         
-        /* Mobile responsive fix - prevents ITAR notice and Export button overlap */
+        /* Mobile responsive fix - prevents ITAR notice and buttons overlap */
         @media (max-width: 768px) {
           .itar-notice {
-            bottom: 150px !important;
+            bottom: 190px !important;
             left: 10px !important;
             right: auto !important;
             font-size: 10px !important;
