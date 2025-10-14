@@ -241,21 +241,37 @@
     {
       "id": "375-cheytac",
       "label": ".375 CheyTac",
-      "description": "Effective range up to 2,500 yards",
-      "specifications": {
-        "bulletWeight": "350 grain",
-        "muzzleVelocity": "2,900 fps",
-        "energy": "6,500 ft-lbs"
+      "description": "2,950 fps muzzle velocity | 6,775 ft-lbs muzzle energy | Effective range 2,500+ yards",
+      "barrelSpecs": {
+        "length": "29.5 inches",
+        "twistRate": "1:9.5",
+        "rifling": "5R",
+        "fluted": true,
+        "muzzleThreadPitch": "7/8-24",
+        "crown": "11-degree target crown"
+      },
+      "ballisticInfo": {
+        "note": "All velocity and energy information based on CheyTac Balanced Flight projectile (350 grain)",
+        "muzzleVelocity": "2,950 fps",
+        "muzzleEnergy": "6,775 ft-lbs"
       }
     },
     {
       "id": "408-cheytac",
       "label": ".408 CheyTac",
-      "description": "Effective range up to 2,500+ yards",
-      "specifications": {
-        "bulletWeight": "419 grain",
+      "description": "2,850 fps muzzle velocity | 7,600 ft-lbs muzzle energy | Effective range 2,300+ yards",
+      "barrelSpecs": {
+        "length": "29.5 inches",
+        "twistRate": "1:10",
+        "rifling": "5R",
+        "fluted": true,
+        "muzzleThreadPitch": "7/8-24",
+        "crown": "11-degree target crown"
+      },
+      "ballisticInfo": {
+        "note": "All velocity and energy information based on CheyTac Balanced Flight projectile (419 grain)",
         "muzzleVelocity": "2,850 fps",
-        "energy": "7,600 ft-lbs"
+        "muzzleEnergy": "7,600 ft-lbs"
       }
     }
   ],
