@@ -10,7 +10,7 @@ import { UIControls } from './components/UIControls/UIControls';
 // Auto-detect if we're in development or production
 const PRODUCT_PATH = import.meta.env.DEV 
   ? '' // Local development - load from public folder
-  : 'https://cheytac-assets.sfo3.digitaloceanspaces.com'; // Production - load from DigitalOcean
+  : 'https://cheytac-assets.sfo3.cdn.digitaloceanspaces.com'; // Production - CDN URL // Production - load from DigitalOcean
 
 // Toast notification function
 function showToast(message: string, type: 'success' | 'error' = 'success') {
