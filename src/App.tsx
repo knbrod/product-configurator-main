@@ -1,4 +1,4 @@
-// src/App.tsx - Clean 3D Configurator with Single-View Export
+// src/App.tsx - Clean 3D Configurator with Single-View Export and Model Preloading
 import { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useConfigStore } from './state/useConfigStore';
@@ -6,11 +6,12 @@ import { validateManifest } from './utils/manifestValidator';
 import { TestModelViewer } from './components/ModelViewer/TestModelViewer';
 import { LuxuryConfigurator, LuxuryConfigModal } from './components/Configurator/LuxuryConfigurator';
 import { UIControls } from './components/UIControls/UIControls';
+import { ModelPreloader } from './components/ModelPreloader';
 
 // Auto-detect if we're in development or production
 const PRODUCT_PATH = import.meta.env.DEV 
   ? '' // Local development - load from public folder
-  : 'https://cheytac-assets.sfo3.cdn.digitaloceanspaces.com'; // Production - CDN URL // Production - load from DigitalOcean
+  : 'https://cheytac-assets.sfo3.cdn.digitaloceanspaces.com'; // Production - CDN URL
 
 // Toast notification function
 function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -570,6 +571,9 @@ function App() {
           }}
         />
         <LuxuryConfigurator />
+        
+        {/* Model Preloader - Preloads all suppressor models for instant switching */}
+        <ModelPreloader />
       </Canvas>
       
       <LuxuryConfigModal />
