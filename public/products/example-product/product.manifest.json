@@ -176,9 +176,10 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
+              "barrel": [4, 1],
+              "muzzleBrake": [20, 10],
+              "handGuard": [3, 1],
+              "default": [2, 1]
             }
           }
         },
@@ -192,9 +193,10 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
+              "barrel": [4, 1],
+              "muzzleBrake": [20, 10],
+              "handGuard": [3, 1],
+              "default": [2, 1]
             }
           }
         },
@@ -208,9 +210,10 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
+              "barrel": [4, 1],
+              "muzzleBrake": [20, 10],
+              "handGuard": [3, 1],
+              "default": [2, 1]
             }
           }
         },
@@ -224,20 +227,69 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [2, 1],
-              "muzzleBrake": [2, 1],
-              "default": [1, 1]
+              "barrel": [4, 1],
+              "muzzleBrake": [20, 10],
+              "handGuard": [3, 1],
+              "default": [2, 1]
             }
           }
         }
       ]
     }
   },
+  "calibers": [
+    {
+      "id": "375-cheytac",
+      "label": ".375 CheyTac",
+      "description": "Effective range up to 2,500 yards",
+      "specifications": {
+        "bulletWeight": "350 grain",
+        "muzzleVelocity": "2,900 fps",
+        "energy": "6,500 ft-lbs"
+      }
+    },
+    {
+      "id": "408-cheytac",
+      "label": ".408 CheyTac",
+      "description": "Effective range up to 2,500+ yards",
+      "specifications": {
+        "bulletWeight": "419 grain",
+        "muzzleVelocity": "2,850 fps",
+        "energy": "7,600 ft-lbs"
+      }
+    }
+  ],
+  "suppressors": [
+    {
+      "id": "m3-suppressor",
+      "label": "M3 Suppressor",
+      "description": "Standard M3 suppressor configuration",
+      "modelFile": "m200-m3-suppressor.glb"
+    },
+    {
+      "id": "m2-suppressor",
+      "label": "M2 Suppressor",
+      "description": "M2 suppressor with custom UV mapping",
+      "modelFile": "m200-m2-suppressor.glb"
+    },
+    {
+      "id": "no-suppressor",
+      "label": "No Suppressor",
+      "description": "Muzzle brake only",
+      "modelFile": "m200-no-suppressor.glb"
+    }
+  ],
   "parts": [
     {
       "id": "barrel",
       "label": "Barrel",
-      "meshSelectors": ["CT_3-002_408_Barrel_Blank_-_Chambered"]
+      "meshSelectors": [
+        "CT_3-002_408_Barrel_Blank_-_Chambered",
+        "CT_3-002_375_Barrel_Blank_-_Chambered",
+        "*Barrel_Blank*",
+        "*Barrel*"
+      ],
+      "hasCaliber": true
     },
     {
       "id": "receiver",
@@ -245,7 +297,10 @@
       "meshSelectors": [
         "CT_1-001_Receiver",
         "Trigger_Guard_2024",
-        "CT_1-006_Cover_Plate"
+        "CT_1-006_Cover_Plate",
+        "*Receiver*",
+        "*Trigger_Guard*",
+        "*Cover_Plate*"
       ]
     },
     {
@@ -254,7 +309,9 @@
       "meshSelectors": [
         "CT_5-001_Hand_Guard",
         "CT_5-002_Hand_Guard_Clamp",
-        "CT_3-003_Barrel_Nut"
+        "CT_3-003_Barrel_Nut",
+        "*Hand_Guard*",
+        "*Barrel_Nut*"
       ]
     },
     {
@@ -264,20 +321,29 @@
         "CT_4-008_Cheek_Piece",
         "CT_4-006_Cheek_Piece_Bracket",
         "CT_4-003_Butt_Plate",
-        "CT_4-009_Cheek_Piece_Retainer_2"
+        "CT_4-009_Cheek_Piece_Retainer_2",
+        "*Cheek_Piece*",
+        "*Butt_Plate*"
       ]
     },
     {
       "id": "moaRail",
       "label": "MOA Rail",
-      "meshSelectors": ["CT_1-002_40_MOA_Rail"]
+      "meshSelectors": [
+        "CT_1-002_40_MOA_Rail",
+        "*MOA_Rail*",
+        "*Rail*"
+      ]
     },
     {
       "id": "magazine",
       "label": "Magazine",
       "meshSelectors": [
         "Magazine_21",
-        "Magazine_21_Base_Plate"
+        "Magazine_21_Base_Plate",
+        "Magazine_20",
+        "Magazine_20_Base_Plate",
+        "Magazine*"
       ]
     },
     {
@@ -285,21 +351,32 @@
       "label": "Carry Handle",
       "meshSelectors": [
         "CT_5-004_Carry_Handle",
-        "CT_1-013_Handle_Mount"
+        "CT_1-013_Handle_Mount",
+        "*Carry_Handle*",
+        "*Handle_Mount*"
       ]
     },
     {
       "id": "muzzleBrake",
-      "label": "Muzzle Brake",
+      "label": "Muzzle Device",
       "meshSelectors": [
         "CT408_SASS_Suppressor_-_175OD_-_Recoil_Compensator_-_Original_",
-        "Direct_Thread_HUB_Mount"
-      ]
+        "Direct_Thread_HUB_Mount",
+        "*Suppressor*",
+        "*Muzzle*",
+        "*Brake*",
+        "*Recoil_Compensator*",
+        "*HUB_Mount*"
+      ],
+      "hasSuppressor": true
     },
     {
       "id": "handleClamp",
       "label": "Handle Clamp",
-      "meshSelectors": ["CT_5-005_Handle_Clamp"]
+      "meshSelectors": [
+        "CT_5-005_Handle_Clamp",
+        "*Handle_Clamp*"
+      ]
     },
     {
       "id": "bipodMonopod",
@@ -323,7 +400,9 @@
         "CT_5-020_Bipod_Foot_Release",
         "CT_5-020_Bipod_Foot_Release001",
         "CT_4-011_Monopod_Leg",
-        "CT_4-012_Monopod_Foot"
+        "CT_4-012_Monopod_Foot",
+        "*Bipod*",
+        "*Monopod*"
       ]
     },
     {
@@ -334,7 +413,9 @@
         "CT_2-006_Bolt_Handle_Shaft",
         "CT_2-007_Bolt_Handle_Knob",
         "CT_2-008_Bolt_Lock_Nut", 
-        "CT_2-009_Bolt_Cam"
+        "CT_2-009_Bolt_Cam",
+        "*Bolt_Handle*",
+        "*Bolt_Cam*"
       ]
     }
   ]

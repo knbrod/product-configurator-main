@@ -27,6 +27,26 @@ const UIGroupSchema = z.object({
   partIds: z.array(z.string()),
 });
 
+// NEW: Caliber schema
+const CaliberSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  specifications: z.object({
+    bulletWeight: z.string().optional(),
+    muzzleVelocity: z.string().optional(),
+    energy: z.string().optional(),
+  }).optional(),
+});
+
+// NEW: Suppressor schema
+const SuppressorSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+  modelFile: z.string(), // GLB filename
+});
+
 // NEW: Texture system schemas
 const TextureRepeatSchema = z.record(z.string(), z.tuple([z.number(), z.number()])).and(
   z.object({
@@ -128,6 +148,8 @@ const PartSchema = z.object({
   id: z.string(),
   label: z.string(),
   meshSelectors: z.array(z.string()),
+  hasCaliber: z.boolean().optional(), // NEW: Flag for parts that have caliber options
+  hasSuppressor: z.boolean().optional(), // NEW: Flag for parts that have suppressor options
   options: z.array(OptionSchema).optional(), // Made optional for new system
 });
 
@@ -143,6 +165,8 @@ export const ManifestSchema = z.object({
   configurableParts: z.array(z.string()).optional(),
   materialCategories: z.array(MaterialCategorySchema).optional(),
   finishModes: FinishModesSchema.optional(),
+  calibers: z.array(CaliberSchema).optional(), // NEW: Caliber options
+  suppressors: z.array(SuppressorSchema).optional(), // NEW: Suppressor options
 });
 
 // TypeScript types derived from schemas
@@ -150,6 +174,12 @@ export type Vector3 = z.infer<typeof Vector3Schema>;
 export type Camera = z.infer<typeof CameraSchema>;
 export type Hotspot = z.infer<typeof HotspotSchema>;
 export type UIGroup = z.infer<typeof UIGroupSchema>;
+
+// NEW: Caliber type
+export type Caliber = z.infer<typeof CaliberSchema>;
+
+// NEW: Suppressor type
+export type Suppressor = z.infer<typeof SuppressorSchema>;
 
 // NEW: Texture system types
 export type ColorMaterial = z.infer<typeof ColorMaterialSchema>;

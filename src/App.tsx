@@ -7,6 +7,11 @@ import { TestModelViewer } from './components/ModelViewer/TestModelViewer';
 import { LuxuryConfigurator, LuxuryConfigModal } from './components/Configurator/LuxuryConfigurator';
 import { UIControls } from './components/UIControls/UIControls';
 
+// Auto-detect if we're in development or production
+const PRODUCT_PATH = import.meta.env.DEV 
+  ? '' // Local development - load from public folder
+  : 'https://cheytac-assets.sfo3.digitaloceanspaces.com'; // Production - load from DigitalOcean
+
 // Toast notification function
 function showToast(message: string, type: 'success' | 'error' = 'success') {
   // Remove existing toasts
@@ -213,14 +218,16 @@ function App() {
       const configData = {
         receiver_finish: getPartFinish('receiver'),
         barrel_finish: getPartFinish('barrel'),
-        stock_finish: getPartFinish('stock'),
+        cheek_piece_finish: getPartFinish('cheekPiece'),
         bolt_finish: getPartFinish('boltBody'),
         magazine_finish: getPartFinish('magazine'),
         bipod_finish: getPartFinish('bipodMonopod'),
-        muzzle_finish: getPartFinish('muzzleBrake'),
+        muzzle_device_finish: getPartFinish('muzzleBrake'),
         pattern_name: finishMode === 'patterns' && selectedPattern 
           ? getFinishName(selectedPattern, true) 
           : 'Custom Configuration',
+        caliber: manifest.calibers?.find(c => c.id === state.selectedCaliber)?.label || 'Not specified',
+        suppressor_option: manifest.suppressors?.find(s => s.id === state.selectedSuppressor)?.label || 'Not specified',
         customer_name: customerName,
         customer_email: customerEmail,
         screenshot: screenshot
@@ -436,7 +443,7 @@ function App() {
       const manifestData = await response.json();
       const validatedManifest = validateManifest(manifestData);
       
-      loadManifest(validatedManifest, 'https://cheytac-assets.sfo3.digitaloceanspaces.com');
+      loadManifest(validatedManifest, PRODUCT_PATH);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load product');
       console.error('Failed to load product manifest:', err);
@@ -482,7 +489,62 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(to bottom right, #efddddd3, #000000)' }}>
-      <div style={{ pointerEvents: showDisclaimer ? 'none' : 'auto', width: '100%', height: '100%' }}>
+      {/* 3D Model Loading Overlay - Render FIRST */}
+      {modelLoading && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom right, #FAF9F6, #EAE8E4)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.3s ease-in'
+        }}>
+          <img 
+            src="/logo.png" 
+            alt="CheyTac USA" 
+            style={{ 
+              height: '120px', 
+              width: 'auto',
+              marginBottom: '30px',
+              animation: 'pulse 2s ease-in-out infinite'
+            }}
+          />
+          <div style={{
+            color: '#BA2025',
+            fontSize: '16px',
+            fontWeight: '600',
+            letterSpacing: '1px'
+          }}>
+            LOADING CONFIGURATOR
+          </div>
+          <div style={{
+            width: '200px',
+            height: '3px',
+            background: 'rgba(186, 32, 37, 0.2)',
+            borderRadius: '2px',
+            marginTop: '20px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              height: '100%',
+              background: '#BA2025',
+              animation: 'loadingBar 2s ease-in-out infinite'
+            }} />
+          </div>
+        </div>
+      )}
+
+      <div style={{ 
+        pointerEvents: showDisclaimer ? 'none' : 'auto', 
+        width: '100%', 
+        height: '100%'
+      }}>
         <Canvas 
         camera={{ 
           position: cameraPosition, 
@@ -498,7 +560,7 @@ function App() {
         shadows
       >
         <TestModelViewer 
-          productPath="https://cheytac-assets.sfo3.digitaloceanspaces.com"
+          productPath={PRODUCT_PATH}
           onLoadComplete={() => {
             setModelLoading(false);
             // Only show disclaimer if user hasn't acknowledged it yet
@@ -1296,57 +1358,6 @@ function App() {
             >
               Cancel
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* 3D Model Loading Overlay */}
-      {modelLoading && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'linear-gradient(to bottom right, #FAF9F6, #EAE8E4)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          animation: 'fadeIn 0.3s ease-in'
-        }}>
-          <img 
-            src="/logo.png" 
-            alt="CheyTac USA" 
-            style={{ 
-              height: '120px', 
-              width: 'auto',
-              marginBottom: '30px',
-              animation: 'pulse 2s ease-in-out infinite'
-            }}
-          />
-          <div style={{
-            color: '#BA2025',
-            fontSize: '16px',
-            fontWeight: '600',
-            letterSpacing: '1px'
-          }}>
-            LOADING CONFIGURATOR
-          </div>
-          <div style={{
-            width: '200px',
-            height: '3px',
-            background: 'rgba(186, 32, 37, 0.2)',
-            borderRadius: '2px',
-            marginTop: '20px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              height: '100%',
-              background: '#BA2025',
-              animation: 'loadingBar 2s ease-in-out infinite'
-            }} />
           </div>
         </div>
       )}

@@ -24,6 +24,12 @@ export interface ConfigState {
   selectedColors: Record<string, string>; // partId -> colorId (for color mode)
   partColorOverrides: Record<string, string>; // partId -> colorId (overrides pattern with color)
   
+  // Caliber selection
+  selectedCaliber: string | null; // caliberId
+  
+  // Suppressor selection
+  selectedSuppressor: string | null; // suppressorId
+  
   // Legacy selection state (for backward compatibility)
   selectedOptions: Record<string, string>; // partId -> optionId
   activePartId: string | null;
@@ -64,6 +70,15 @@ export interface ConfigState {
   applyColorToAllParts: (colorId: string) => void;
   setPartColorOverride: (partId: string, colorId: string | null) => void;
   clearPartColorOverride: (partId: string) => void;
+  
+  // Caliber action
+  selectCaliber: (caliberId: string) => void;
+  
+  // Suppressor action
+  selectSuppressor: (suppressorId: string) => void;
+  
+  // Get current model file path
+  getCurrentModelFile: () => string;
   
   // Legacy actions (for backward compatibility)
   selectOption: (partId: string, optionId: string) => void;
@@ -114,6 +129,12 @@ export const useConfigStore = create<ConfigState>()(
       selectedColors: {},
       partColorOverrides: {},
       
+      // Caliber
+      selectedCaliber: null,
+      
+      // Suppressor
+      selectedSuppressor: null,
+      
       // Legacy state
       selectedOptions: {},
       activePartId: null,
@@ -151,6 +172,12 @@ export const useConfigStore = create<ConfigState>()(
           });
         }
 
+        // Set default caliber (prefer .408)
+        const defaultCaliber = manifest.calibers?.find(c => c.id === '408-cheytac') || manifest.calibers?.[0];
+
+        // Set default suppressor (prefer M3)
+        const defaultSuppressor = manifest.suppressors?.find(s => s.id === 'm3-suppressor') || manifest.suppressors?.[0];
+
         // Legacy compatibility - set default options for each part
         const defaultOptions: Record<string, string> = {};
         manifest.parts.forEach(part => {
@@ -163,6 +190,8 @@ export const useConfigStore = create<ConfigState>()(
           manifest,
           productPath,
           selectedColors: defaultColors,
+          selectedCaliber: defaultCaliber?.id || null,
+          selectedSuppressor: defaultSuppressor?.id || null,
           selectedOptions: defaultOptions,
           computedHotspots: manifest.hotspots,
           configId: generateConfigId(),
@@ -278,6 +307,35 @@ export const useConfigStore = create<ConfigState>()(
         console.log('🧹 State updated, should trigger re-render');
       },
 
+      // Caliber action
+      selectCaliber: (caliberId: string) => {
+        console.log('Selecting caliber:', caliberId);
+        set({ 
+          selectedCaliber: caliberId,
+          configId: generateConfigId(),
+        });
+      },
+
+      // Suppressor action
+      selectSuppressor: (suppressorId: string) => {
+        console.log('Selecting suppressor:', suppressorId);
+        set({ 
+          selectedSuppressor: suppressorId,
+          configId: generateConfigId(),
+        });
+      },
+
+      // Get current model file path
+      getCurrentModelFile: () => {
+        const { manifest, selectedSuppressor } = get();
+        if (!manifest || !manifest.suppressors) {
+          return 'product.glb'; // fallback
+        }
+        
+        const suppressor = manifest.suppressors.find(s => s.id === selectedSuppressor);
+        return suppressor?.modelFile || manifest.suppressors[0]?.modelFile || 'product.glb';
+      },
+
       // Legacy actions (for backward compatibility)
       selectOption: (partId, optionId) => {
         const { manifest, selectedOptions } = get();
@@ -365,6 +423,12 @@ export const useConfigStore = create<ConfigState>()(
           });
         }
 
+        // Reset caliber to default
+        const defaultCaliber = manifest.calibers?.find(c => c.id === '408-cheytac') || manifest.calibers?.[0];
+
+        // Reset suppressor to default
+        const defaultSuppressor = manifest.suppressors?.find(s => s.id === 'm3-suppressor') || manifest.suppressors?.[0];
+
         // Legacy compatibility
         const defaultOptions: Record<string, string> = {};
         manifest.parts.forEach(part => {
@@ -377,6 +441,8 @@ export const useConfigStore = create<ConfigState>()(
           finishMode: 'colors',
           selectedPattern: null,
           selectedColors: defaultColors,
+          selectedCaliber: defaultCaliber?.id || null,
+          selectedSuppressor: defaultSuppressor?.id || null,
           selectedOptions: defaultOptions,
           partColorOverrides: {},
           activePartId: null,
@@ -491,6 +557,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedColors, 
           selectedOptions, 
           partColorOverrides,
+          selectedCaliber,
           configId 
         } = get();
         
@@ -502,6 +569,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedPattern,
           selectedColors,
           partColorOverrides,
+          selectedCaliber,
           selectedOptions,
           timestamp: new Date().toISOString(),
         };
@@ -539,6 +607,8 @@ export const useConfigStore = create<ConfigState>()(
         selectedPattern: state.selectedPattern,
         selectedColors: state.selectedColors,
         partColorOverrides: state.partColorOverrides,
+        selectedCaliber: state.selectedCaliber,
+        selectedSuppressor: state.selectedSuppressor,
         selectedOptions: state.selectedOptions,
         configId: state.configId,
         qualityMode: state.qualityMode,

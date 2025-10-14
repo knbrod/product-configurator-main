@@ -115,13 +115,17 @@ function LuxuryConfigModal() {
     selectedPattern,
     selectedOptions,
     partColorOverrides,
+    selectedCaliber,
+    selectedSuppressor,
     setModalOpen,
     selectOption,
     selectPartColor,
     selectPattern,
     setFinishMode,
     clearPartColorOverride,
-    getPartUIGroup
+    getPartUIGroup,
+    selectCaliber,
+    selectSuppressor
   } = useConfigStore();
 
   // Local state for pattern mode: show patterns or show color overrides
@@ -136,6 +140,12 @@ function LuxuryConfigModal() {
   if (!part) return null;
 
   const uiGroup = getPartUIGroup(modalPartId);
+  
+  // Check if this part has caliber options
+  const hasCaliber = part.hasCaliber && manifest.calibers;
+  
+  // Check if this part has suppressor options
+  const hasSuppressor = part.hasSuppressor && manifest.suppressors;
   
   // Check if this part has a color override in pattern mode
   const hasColorOverride = finishMode === 'patterns' && partColorOverrides[modalPartId];
@@ -210,6 +220,16 @@ function LuxuryConfigModal() {
     }
   };
 
+  const handleCaliberSelect = (caliberId: string) => {
+    console.log('Caliber selected:', caliberId);
+    selectCaliber(caliberId);
+  };
+
+  const handleSuppressorSelect = (suppressorId: string) => {
+    console.log('Suppressor selected:', suppressorId);
+    selectSuppressor(suppressorId);
+  };
+
   const handleResetToPattern = () => {
     clearPartColorOverride(modalPartId);
     setShowingOverride(false);
@@ -236,8 +256,8 @@ function LuxuryConfigModal() {
     return '#666';
   };
 
-  // If no options available, show message
-  if (availableOptions.length === 0) {
+  // If no options available and no caliber and no suppressor, show message
+  if (availableOptions.length === 0 && !hasCaliber && !hasSuppressor) {
     return (
       <div 
         className="luxury-modal-overlay" 
@@ -374,7 +394,135 @@ function LuxuryConfigModal() {
           gap: '15px'
         }}>
           
-          {/* Mode Toggle Buttons */}
+          {/* CALIBER SELECTION - Only for barrel */}
+          {hasCaliber && manifest.calibers && (
+            <>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
+                Select Caliber
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {manifest.calibers.map(caliber => (
+                  <div
+                    key={caliber.id}
+                    onClick={() => handleCaliberSelect(caliber.id)}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: selectedCaliber === caliber.id ? '#BA2025' : 'rgba(255,255,255,0.1)',
+                      border: `2px solid ${selectedCaliber === caliber.id ? '#BA2025' : 'transparent'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '18px',
+                        color: 'white' 
+                      }}>
+                        {caliber.label}
+                      </div>
+                      {selectedCaliber === caliber.id && (
+                        <div style={{ color: 'white', fontSize: '20px' }}>✓</div>
+                      )}
+                    </div>
+                    <div style={{ 
+                      fontSize: '13px', 
+                      color: '#ccc',
+                      marginBottom: '8px'
+                    }}>
+                      {caliber.description}
+                    </div>
+                    {caliber.specifications && (
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#999',
+                        display: 'flex',
+                        gap: '15px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span>• {caliber.specifications.bulletWeight}</span>
+                        <span>• {caliber.specifications.muzzleVelocity}</span>
+                        <span>• {caliber.specifications.energy}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div style={{
+                height: '1px',
+                background: 'rgba(255,255,255,0.2)',
+                margin: '10px 0'
+              }} />
+            </>
+          )}
+
+          {/* SUPPRESSOR SELECTION - Only for muzzle device */}
+          {hasSuppressor && manifest.suppressors && (
+            <>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
+                Select Suppressor Configuration
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {manifest.suppressors.map(suppressor => (
+                  <div
+                    key={suppressor.id}
+                    onClick={() => handleSuppressorSelect(suppressor.id)}
+                    style={{
+                      padding: '16px',
+                      backgroundColor: selectedSuppressor === suppressor.id ? '#BA2025' : 'rgba(255,255,255,0.1)',
+                      border: `2px solid ${selectedSuppressor === suppressor.id ? '#BA2025' : 'transparent'}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '8px'
+                    }}>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '18px',
+                        color: 'white' 
+                      }}>
+                        {suppressor.label}
+                      </div>
+                      {selectedSuppressor === suppressor.id && (
+                        <div style={{ color: 'white', fontSize: '20px' }}>✓</div>
+                      )}
+                    </div>
+                    {suppressor.description && (
+                      <div style={{ 
+                        fontSize: '13px', 
+                        color: '#ccc'
+                      }}>
+                        {suppressor.description}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div style={{
+                height: '1px',
+                background: 'rgba(255,255,255,0.2)',
+                margin: '10px 0'
+              }} />
+            </>
+          )}
+
+          {/* MODE TOGGLE BUTTONS */}
           <div style={{
             display: 'flex',
             backgroundColor: 'rgba(255,255,255,0.1)',

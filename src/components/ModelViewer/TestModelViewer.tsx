@@ -4,6 +4,89 @@ import { useGLTF, OrbitControls, Environment, ContactShadows, Center, useTexture
 import { useConfigStore } from '../../state/useConfigStore';
 import * as THREE from 'three';
 
+// ================================================================
+// FLEXIBLE MESH MATCHING UTILITIES
+// ================================================================
+
+/**
+ * Checks if a mesh name matches a part selector using flexible pattern matching.
+ * Supports:
+ * 1. Exact matches (backward compatible)
+ * 2. Wildcard matching with *
+ * 3. Partial keyword matching
+ * 4. Pattern-based matching for variants
+ */
+function meshMatchesSelector(meshName: string, selector: string): boolean {
+  // 1. EXACT MATCH (fastest, backward compatible)
+  if (meshName === selector) {
+    return true;
+  }
+
+  // 2. WILDCARD MATCHING: selector contains *
+  // Example: "M200_Rifle_-_*_Suppressor*" matches any suppressor variant
+  if (selector.includes('*')) {
+    const regexPattern = selector
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // Escape special regex chars
+      .replace(/\*/g, '.*'); // Replace * with .*
+    const regex = new RegExp(`^${regexPattern}$`, 'i');
+    return regex.test(meshName);
+  }
+
+  // 3. PARTIAL KEYWORD MATCHING
+  // If selector is just a keyword like "Barrel" or "Suppressor"
+  // Check if mesh name contains it (case-insensitive)
+  if (!selector.includes('_') && !selector.includes('-')) {
+    return meshName.toLowerCase().includes(selector.toLowerCase());
+  }
+
+  // 4. PATTERN MATCHING: Remove variant-specific parts
+  // Extract base component name from both selector and mesh
+  const normalizePattern = (str: string): string => {
+    // Remove common variant indicators: numbers, specific model codes
+    return str
+      .replace(/\d+/g, 'N') // Replace all numbers with N
+      .replace(/-\d+$/g, '') // Remove trailing -1, -2, etc.
+      .toLowerCase();
+  };
+
+  const normalizedMesh = normalizePattern(meshName);
+  const normalizedSelector = normalizePattern(selector);
+
+  // Check if normalized patterns match
+  if (normalizedMesh.includes(normalizedSelector) || 
+      normalizedSelector.includes(normalizedMesh)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Finds which part ID a mesh belongs to using flexible matching
+ */
+function findPartForMesh(
+  meshName: string, 
+  configurableParts: string[], 
+  manifest: any
+): string | null {
+  for (const partId of configurableParts) {
+    const part = manifest.parts?.find((p: any) => p.id === partId);
+    if (!part?.meshSelectors) continue;
+
+    // Check if any selector matches this mesh
+    for (const selector of part.meshSelectors) {
+      if (meshMatchesSelector(meshName, selector)) {
+        return partId;
+      }
+    }
+  }
+  return null;
+}
+
+// ================================================================
+// FIXED BLACK PARTS
+// ================================================================
+
 // Fixed parts that are always black and cannot be changed
 const FIXED_BLACK_PARTS = [
   // Dowel pins and small hardware
@@ -141,10 +224,9 @@ const FIXED_BLACK_PARTS = [
   "E_CLIP_125_97431A240STEP",
   "E_CLIP_125_97431A240STEP001",
   
- // Limbsaver butt pad
-"Limbsaver_TRAP_GRIND_TO_FIT_Butt_Padstep",
-"CT_4-001_Butt_Pad_-_Limbsaver_TRAP_GRIND_TO_FITstep",
-
+  // Limbsaver butt pad
+  "Limbsaver_TRAP_GRIND_TO_FIT_Butt_Padstep",
+  "CT_4-001_Butt_Pad_-_Limbsaver_TRAP_GRIND_TO_FITstep",
   
   // Set screws
   "set_screws,_cone_point_MASTER_8-32_x_375STEP",
@@ -236,9 +318,13 @@ function createMaterialFromDefinition(materialDef: any, partId?: string): THREE.
   return material;
 }
 
-function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLoadComplete?: () => void }) {
+function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: string; modelFile: string; onLoadComplete?: () => void }) {
   const modelRef = useRef<THREE.Group>(null);
-  const { scene } = useGLTF(`${productPath}/product.glb`);
+  const modelUrl = `${productPath}/products/example-product/${modelFile}`;
+  
+  console.log('🔫 Loading model from:', modelUrl);
+  
+  const { scene } = useGLTF(modelUrl);
   const { 
     finishMode, 
     selectedPattern, 
@@ -257,7 +343,7 @@ function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLo
   // Create a stable scene copy that won't be re-cloned
   const stableScene = useMemo(() => {
     const clonedScene = scene.clone();
-    console.log('RifleModel: Created stable scene clone');
+    console.log('RifleModel: Created stable scene clone for model:', modelFile);
     
     // Call onLoadComplete when model is ready
     if (onLoadComplete) {
@@ -266,18 +352,24 @@ function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLo
     }
     
     return clonedScene;
-  }, [scene, onLoadComplete]);
+  }, [scene, modelFile, onLoadComplete]);
 
-  // Apply materials when selections change
+  // Apply materials when selections change - NOW WITH FLEXIBLE MATCHING
   useEffect(() => {
     if (modelRef.current && manifest) {
+      console.log('=== Applying Materials with Flexible Matching ===');
       console.log('RifleModel: Applying materials for finish mode:', finishMode);
       console.log('RifleModel: Part overrides in effect:', partColorOverrides);
       
+      const matchedParts = new Set<string>();
+      const unmatchedMeshes: string[] = [];
+      
       modelRef.current.traverse((child) => {
         if (child instanceof THREE.Mesh) {
-          // Check if this part should be fixed black
-          if (FIXED_BLACK_PARTS.includes(child.name)) {
+          // Check if this part should be fixed black - USE EXACT MATCHING ONLY
+          const isFixedBlack = FIXED_BLACK_PARTS.includes(child.name);
+          
+          if (isFixedBlack) {
             child.material = new THREE.MeshStandardMaterial({
               color: "#1a1a1a",
               metalness: 0.2,
@@ -290,25 +382,26 @@ function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLo
           let shouldApplyMaterial = false;
           let materialToApply: THREE.MeshStandardMaterial | null = null;
 
-          // Try new system first
+          // Use flexible matching system
           if (manifest.configurableParts && manifest.finishModes) {
-            const configurableParts = manifest.configurableParts;
-            
-            // Find which part this mesh belongs to
-            const partId = configurableParts.find(partId => {
-              const part = manifest.parts?.find(p => p.id === partId);
-              return part?.meshSelectors?.includes(child.name);
-            });
+            // Find which part this mesh belongs to using flexible matching
+            const partId = findPartForMesh(
+              child.name,
+              manifest.configurableParts,
+              manifest
+            );
 
             if (partId) {
+              matchedParts.add(partId);
               shouldApplyMaterial = true;
+              console.log(`✓ Matched mesh "${child.name}" to part "${partId}"`);
 
               if (finishMode === 'patterns' && selectedPattern) {
                 // Check if this part has a color override
                 if (partColorOverrides[partId]) {
                   console.log('🎨 Applying color override to', partId, ':', partColorOverrides[partId]);
                   const colorOption = manifest.finishModes.colors?.options?.find(
-                    option => option.id === partColorOverrides[partId]
+                    (option: any) => option.id === partColorOverrides[partId]
                   );
                   if (colorOption) {
                     materialToApply = createMaterialFromDefinition(colorOption.material, partId);
@@ -317,29 +410,31 @@ function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLo
                 } else {
                   // Apply pattern
                   const patternOption = manifest.finishModes.patterns?.options?.find(
-                    option => option.id === selectedPattern
+                    (option: any) => option.id === selectedPattern
                   );
                   if (patternOption) {
                     materialToApply = createMaterialFromDefinition(patternOption.material, partId);
-                    console.log('RifleModel: Applied pattern', selectedPattern, 'to mesh:', child.name);
+                    console.log(`🎨 Pattern "${selectedPattern}" → ${partId} (${child.name})`);
                   }
                 }
               } else if (finishMode === 'colors') {
                 // Apply individual colors
                 if (selectedColors[partId]) {
                   const colorOption = manifest.finishModes.colors?.options?.find(
-                    option => option.id === selectedColors[partId]
+                    (option: any) => option.id === selectedColors[partId]
                   );
                   if (colorOption) {
                     materialToApply = createMaterialFromDefinition(colorOption.material, partId);
-                    console.log('RifleModel: Applied color', selectedColors[partId], 'to part:', partId, 'mesh:', child.name);
+                    console.log(`🎨 Color "${selectedColors[partId]}" → ${partId} (${child.name})`);
                   }
                 }
               }
+            } else {
+              unmatchedMeshes.push(child.name);
             }
           }
 
-          // Fallback to legacy system if new system didn't apply material
+          // Fallback to legacy system if flexible matching didn't find anything
           if (!shouldApplyMaterial) {
             // Use legacy getSelectedMaterials approach
             const materials = getSelectedMaterials();
@@ -351,15 +446,45 @@ function RifleModel({ productPath, onLoadComplete }: { productPath: string; onLo
           }
 
           // Apply material or use default
-          if (shouldApplyMaterial) {
-            child.material = materialToApply || new THREE.MeshStandardMaterial({
+          if (shouldApplyMaterial && materialToApply) {
+            // Force material update - handle both single and array materials
+            if (Array.isArray(child.material)) {
+              // If material is an array, update all materials in the array
+              child.material = child.material.map(() => materialToApply.clone());
+            } else {
+              child.material = materialToApply;
+            }
+            
+            // Force the material to update
+            child.material.needsUpdate = true;
+            
+            // Only update UV if it exists
+            if (child.geometry && child.geometry.attributes && child.geometry.attributes.uv) {
+              child.geometry.attributes.uv.needsUpdate = true;
+            }
+          } else if (shouldApplyMaterial) {
+            // Default material for configurable parts
+            const defaultMaterial = new THREE.MeshStandardMaterial({
               color: '#666666',
               metalness: 0.3,
               roughness: 0.8,
             });
+            
+            if (Array.isArray(child.material)) {
+              child.material = child.material.map(() => defaultMaterial.clone());
+            } else {
+              child.material = defaultMaterial;
+            }
           }
         }
       });
+      
+      console.log('✓ Matched parts:', Array.from(matchedParts));
+      if (unmatchedMeshes.length > 0) {
+        console.log('⚠ Unmatched meshes (first 10):', unmatchedMeshes.slice(0, 10));
+        console.log(`⚠ Total unmatched: ${unmatchedMeshes.length} (likely small hardware pieces)`);
+      }
+      console.log('=== Material Application Complete ===');
     }
   }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene]);
 
@@ -383,7 +508,11 @@ function LoadingFallback() {
 }
 
 export function TestModelViewer({ productPath, onLoadComplete }: { productPath: string; onLoadComplete?: () => void }) {
-  console.log('TestModelViewer: Rendering with enhanced lighting');
+  const { getCurrentModelFile, selectedSuppressor } = useConfigStore();
+  const modelFile = getCurrentModelFile();
+  
+  console.log('TestModelViewer: Rendering with model file:', modelFile);
+  console.log('TestModelViewer: Selected suppressor:', selectedSuppressor);
   
   return (
     <>
@@ -432,8 +561,8 @@ export function TestModelViewer({ productPath, onLoadComplete }: { productPath: 
       {/* Enhanced environment lighting */}
       <Environment preset="city" background={false} />
       
-      <Suspense fallback={<LoadingFallback />}>
-        <RifleModel productPath={productPath} onLoadComplete={onLoadComplete} />
+      <Suspense fallback={<LoadingFallback />} key={modelFile}>
+        <RifleModel productPath={productPath} modelFile={modelFile} onLoadComplete={onLoadComplete} />
       </Suspense>
       
      </>
