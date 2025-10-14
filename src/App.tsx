@@ -33,7 +33,7 @@ function App() {
   const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
   const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
   const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false); // Track if user acknowledged
-  const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([2, 1, 4]);
+  const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([-7, 0.8, 0]);
   const [showOrderModal, setShowOrderModal] = useState(false); // Order process modal
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -368,11 +368,11 @@ function App() {
         setItarCollapsed(false);
       }
       
-      // Set camera position based on device
+      // Set camera position based on device - SIDE PROFILE VIEW
       if (isMobile) {
-        setCameraPosition([2, 1, 6]); // More zoomed out on mobile (increased z from 4 to 6)
+        setCameraPosition([-8, 0.8, 0]); // Side view on mobile - further back
       } else {
-        setCameraPosition([2, 1, 4]); // Default desktop position
+        setCameraPosition([-7, 0.8, 0]); // Side view on desktop
       }
     };
     
@@ -560,7 +560,7 @@ function App() {
             letterSpacing: '0.5px'
           }}
         >
-          🛒 START ORDER PROCESS
+        START ORDER PROCESS
         </button>
         
         <button
