@@ -1,4 +1,4 @@
-// src/App.tsx - Clean 3D Configurator with Single-View Export and Model Preloading
+// src/App.tsx - Clean 3D Configurator with Single-View Export and Part Clicking
 import { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { useConfigStore } from './state/useConfigStore';
@@ -7,6 +7,13 @@ import { TestModelViewer } from './components/ModelViewer/TestModelViewer';
 import { LuxuryConfigurator, LuxuryConfigModal } from './components/Configurator/LuxuryConfigurator';
 import { UIControls } from './components/UIControls/UIControls';
 import { ModelPreloader } from './components/ModelPreloader';
+import { PartClickHandler } from './components/PartClickHandler';
+
+// Disable console logs in production to improve performance
+if (import.meta.env.PROD) {
+  console.log = () => {};
+  console.debug = () => {};
+}
 
 // Auto-detect if we're in development or production
 const PRODUCT_PATH = import.meta.env.DEV 
@@ -555,10 +562,12 @@ function App() {
         }} 
         gl={{
           logarithmicDepthBuffer: true,
-          antialias: true,
-          preserveDrawingBuffer: true
+          antialias: window.innerWidth > 768,
+          preserveDrawingBuffer: true,
+          powerPreference: 'high-performance'
         }}
         shadows
+        dpr={window.innerWidth <= 768 ? 1 : Math.min(window.devicePixelRatio, 2)}
       >
         <TestModelViewer 
           productPath={PRODUCT_PATH}
@@ -574,6 +583,9 @@ function App() {
         
         {/* Model Preloader - Preloads all suppressor models for instant switching */}
         <ModelPreloader />
+        
+        {/* Part Click Handler - Click directly on 3D parts to configure */}
+        <PartClickHandler />
       </Canvas>
       
       <LuxuryConfigModal />

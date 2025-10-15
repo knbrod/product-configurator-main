@@ -66,6 +66,12 @@
       "position": { "x": -1.0, "y": -0.25, "z": -4.5 },
       "title": "Bolt Handle",
       "summary": "Handle"
+    },
+    {
+      "partId": "triggerAssembly",
+      "position": { "x": 0, "y": -0.4, "z": -2.5 },
+      "title": "Trigger Assembly",
+      "summary": "Timney Trigger System"
     }
   ],
   "ui": [
@@ -82,7 +88,7 @@
     {
       "groupId": "ergonomics",
       "label": "Ergonomics",
-      "partIds": ["receiver", "cheekPiece", "carryHandle", "boltHandle"]
+      "partIds": ["receiver", "cheekPiece", "carryHandle", "boltHandle", "triggerAssembly"]
     },
     {
       "groupId": "finish",
@@ -101,7 +107,8 @@
     "handleClamp",
     "muzzleBrake",
     "bipodMonopod",
-    "boltHandle"
+    "boltHandle",
+    "triggerAssembly"
   ],
   "finishModes": {
     "colors": {
@@ -279,20 +286,42 @@
     {
       "id": "m3-suppressor",
       "label": "M3 Suppressor",
-      "description": "Standard M3 suppressor configuration",
+      "description": "CheyTac M3 Suppressor for .375/.408. 3D printed Haynes 282. Direct thread HUB. 8.1 in x 1.75 in. 19.8 oz suppressor, 3.2 oz HUB. Six helical chambers with integrated brake. 133 dB at ear, 25 dB reduction, minimal POI shift.",
       "modelFile": "m200-m3-suppressor.glb"
     },
     {
       "id": "m2-suppressor",
       "label": "M2 Suppressor",
-      "description": "M2 suppressor with custom UV mapping",
+      "description": "CheyTac USA M2 Suppressor for .375/.408. 3D printed Haynes 282 nickel based super alloy. Direct thread HUB compatible. Vented K baffle with six helical coaxial chambers and integrated flash hider. 8 in by 2 in. 24.6 oz suppressor, 3.2 oz HUB. 130.3 dB at ear with 25 dB reduction and minimal POI shift.",
       "modelFile": "m200-m2-suppressor.glb"
     },
     {
       "id": "no-suppressor",
       "label": "No Suppressor",
-      "description": "Muzzle brake only",
+      "description": "Muzzle brake only configuration",
       "modelFile": "m200-no-suppressor.glb"
+    }
+  ],
+  "triggers": [
+    {
+      "id": "timney-elite-curved",
+      "label": "Timney Elite Hunter with Curved Trigger shoe",
+      "description": "Standard Elite Hunter trigger with curved shoe"
+    },
+    {
+      "id": "timney-elite-straight",
+      "label": "Timney Elite Hunter with Straight Trigger shoe",
+      "description": "Standard Elite Hunter trigger with straight shoe"
+    },
+    {
+      "id": "timney-2stage-curved",
+      "label": "Timney 2-stage trigger with Curved Trigger shoe",
+      "description": "Two-stage precision trigger with curved shoe"
+    },
+    {
+      "id": "timney-2stage-straight",
+      "label": "Timney 2-stage trigger with Straight Trigger shoe",
+      "description": "Two-stage precision trigger with straight shoe"
     }
   ],
   "parts": [
@@ -312,10 +341,8 @@
       "label": "Receiver",
       "meshSelectors": [
         "CT_1-001_Receiver",
-        "Trigger_Guard_2024",
         "CT_1-006_Cover_Plate",
         "*Receiver*",
-        "*Trigger_Guard*",
         "*Cover_Plate*"
       ]
     },
@@ -433,6 +460,31 @@
         "*Bolt_Handle*",
         "*Bolt_Cam*"
       ]
+    },
+    {
+  "id": "triggerAssembly",
+  "label": "Trigger Assembly",
+  "meshSelectors": [
+    "Trigger_Guard_2024",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2)_Bo",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_S",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__etySTEP",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__fety",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__ottom_Sa",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__otto",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_oval_",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_o",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__TEP-1_Do",
+    "CT_1-020_Timney_Elite_Hunter_Remington_7__ws,_cone",
+    "M200_Rifle_-_CT_1-020*",
+    "M200_Rifle-CT_1-020*",
+    "*Trigger_Guard*",
+    "*Trigger*",
+    "*Timney*"
+  ],
+  "hasTriggerOptions": true
     }
   ]
 }

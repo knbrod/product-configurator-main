@@ -30,6 +30,9 @@ export interface ConfigState {
   // Suppressor selection
   selectedSuppressor: string | null; // suppressorId
   
+  // Trigger selection
+  selectedTrigger: string | null; // triggerId
+  
   // Legacy selection state (for backward compatibility)
   selectedOptions: Record<string, string>; // partId -> optionId
   activePartId: string | null;
@@ -76,6 +79,9 @@ export interface ConfigState {
   
   // Suppressor action
   selectSuppressor: (suppressorId: string) => void;
+  
+  // Trigger action
+  selectTrigger: (triggerId: string) => void;
   
   // Get current model file path
   getCurrentModelFile: () => string;
@@ -135,6 +141,9 @@ export const useConfigStore = create<ConfigState>()(
       // Suppressor
       selectedSuppressor: null,
       
+      // Trigger
+      selectedTrigger: null,
+      
       // Legacy state
       selectedOptions: {},
       activePartId: null,
@@ -178,6 +187,9 @@ export const useConfigStore = create<ConfigState>()(
         // Set default suppressor (prefer M3)
         const defaultSuppressor = manifest.suppressors?.find(s => s.id === 'm3-suppressor') || manifest.suppressors?.[0];
 
+        // Set default trigger (prefer Elite Hunter Curved)
+        const defaultTrigger = manifest.triggers?.find(t => t.id === 'timney-elite-curved') || manifest.triggers?.[0];
+
         // Legacy compatibility - set default options for each part
         const defaultOptions: Record<string, string> = {};
         manifest.parts.forEach(part => {
@@ -192,6 +204,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedColors: defaultColors,
           selectedCaliber: defaultCaliber?.id || null,
           selectedSuppressor: defaultSuppressor?.id || null,
+          selectedTrigger: defaultTrigger?.id || null,
           selectedOptions: defaultOptions,
           computedHotspots: manifest.hotspots,
           configId: generateConfigId(),
@@ -325,6 +338,15 @@ export const useConfigStore = create<ConfigState>()(
         });
       },
 
+      // Trigger action
+      selectTrigger: (triggerId: string) => {
+        console.log('Selecting trigger:', triggerId);
+        set({ 
+          selectedTrigger: triggerId,
+          configId: generateConfigId(),
+        });
+      },
+
       // Get current model file path
       getCurrentModelFile: () => {
         const { manifest, selectedSuppressor } = get();
@@ -429,6 +451,9 @@ export const useConfigStore = create<ConfigState>()(
         // Reset suppressor to default
         const defaultSuppressor = manifest.suppressors?.find(s => s.id === 'm3-suppressor') || manifest.suppressors?.[0];
 
+        // Reset trigger to default
+        const defaultTrigger = manifest.triggers?.find(t => t.id === 'timney-elite-curved') || manifest.triggers?.[0];
+
         // Legacy compatibility
         const defaultOptions: Record<string, string> = {};
         manifest.parts.forEach(part => {
@@ -443,6 +468,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedColors: defaultColors,
           selectedCaliber: defaultCaliber?.id || null,
           selectedSuppressor: defaultSuppressor?.id || null,
+          selectedTrigger: defaultTrigger?.id || null,
           selectedOptions: defaultOptions,
           partColorOverrides: {},
           activePartId: null,
@@ -469,6 +495,21 @@ export const useConfigStore = create<ConfigState>()(
         if (!manifest) return {};
 
         const materials: Record<string, any> = {};
+
+        // FORCE TRIGGER ASSEMBLY TO ALWAYS BE BLACK
+        const triggerPart = manifest.parts?.find(p => p.id === 'triggerAssembly');
+        if (triggerPart) {
+          const blackMaterial = {
+            type: 'color',
+            color: '#000000',
+            metalness: 0.3,
+            roughness: 0.8
+          };
+          triggerPart.meshSelectors?.forEach(selector => {
+            materials[selector] = blackMaterial;
+          });
+          console.log('🔫 Applied black material to trigger assembly meshes:', triggerPart.meshSelectors);
+        }
 
         if (finishMode === 'patterns' && selectedPattern) {
           console.log('🎨 Pattern mode with pattern:', selectedPattern);
@@ -558,6 +599,8 @@ export const useConfigStore = create<ConfigState>()(
           selectedOptions, 
           partColorOverrides,
           selectedCaliber,
+          selectedSuppressor,
+          selectedTrigger,
           configId 
         } = get();
         
@@ -570,6 +613,8 @@ export const useConfigStore = create<ConfigState>()(
           selectedColors,
           partColorOverrides,
           selectedCaliber,
+          selectedSuppressor,
+          selectedTrigger,
           selectedOptions,
           timestamp: new Date().toISOString(),
         };
@@ -609,6 +654,7 @@ export const useConfigStore = create<ConfigState>()(
         partColorOverrides: state.partColorOverrides,
         selectedCaliber: state.selectedCaliber,
         selectedSuppressor: state.selectedSuppressor,
+        selectedTrigger: state.selectedTrigger,
         selectedOptions: state.selectedOptions,
         configId: state.configId,
         qualityMode: state.qualityMode,

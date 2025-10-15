@@ -117,6 +117,7 @@ function LuxuryConfigModal() {
     partColorOverrides,
     selectedCaliber,
     selectedSuppressor,
+    selectedTrigger,
     setModalOpen,
     selectOption,
     selectPartColor,
@@ -257,7 +258,7 @@ function LuxuryConfigModal() {
   };
 
   // If no options available and no caliber and no suppressor, show message
-  if (availableOptions.length === 0 && !hasCaliber && !hasSuppressor) {
+  if (availableOptions.length === 0 && !hasCaliber && !hasSuppressor && !(modalPartId === 'triggerAssembly' && manifest.triggers)) {
     return (
       <div 
         className="luxury-modal-overlay" 
@@ -522,51 +523,116 @@ function LuxuryConfigModal() {
             </>
           )}
 
-          {/* MODE TOGGLE BUTTONS */}
-          <div style={{
-            display: 'flex',
-            backgroundColor: 'rgba(255,255,255,0.1)',
-            borderRadius: '8px',
-            padding: '4px'
-          }}>
-            <button
-              onClick={() => setFinishMode('colors')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                backgroundColor: finishMode === 'colors' ? '#BA2025' : 'transparent',
-                color: finishMode === 'colors' ? 'white' : '#ccc',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Colors
-            </button>
-            <button
-              onClick={() => setFinishMode('patterns')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                backgroundColor: finishMode === 'patterns' ? '#BA2025' : 'transparent',
-                color: finishMode === 'patterns' ? 'white' : '#ccc',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              Patterns
-            </button>
-          </div>
+          {/* TRIGGER SELECTION - ONLY for triggerAssembly */}
+          {modalPartId === 'triggerAssembly' && manifest.triggers && (
+            <>
+              <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
+                Select Trigger
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {manifest.triggers.map(trigger => {
+                  const selectTrigger = useConfigStore.getState().selectTrigger;
+                  
+                  return (
+                    <div
+                      key={trigger.id}
+                      onClick={() => selectTrigger(trigger.id)}
+                      style={{
+                        padding: '16px',
+                        backgroundColor: selectedTrigger === trigger.id ? '#BA2025' : 'rgba(255,255,255,0.1)',
+                        border: `2px solid ${selectedTrigger === trigger.id ? '#BA2025' : 'transparent'}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '8px'
+                      }}>
+                        <div style={{ 
+                          fontWeight: 'bold', 
+                          fontSize: '16px',
+                          color: 'white',
+                          flex: 1
+                        }}>
+                          {trigger.label}
+                        </div>
+                        {selectedTrigger === trigger.id && (
+                          <div style={{ color: 'white', fontSize: '20px' }}>✓</div>
+                        )}
+                      </div>
+                      {trigger.description && (
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#ccc'
+                        }}>
+                          {trigger.description}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Divider */}
+              <div style={{
+                height: '1px',
+                background: 'rgba(255,255,255,0.2)',
+                margin: '10px 0'
+              }} />
+            </>
+          )}
+
+          {/* MODE TOGGLE BUTTONS - Only show for configurable parts */}
+          {modalPartId !== 'triggerAssembly' && (
+            <div style={{
+              display: 'flex',
+              backgroundColor: 'rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              padding: '4px'
+            }}>
+              <button
+                onClick={() => setFinishMode('colors')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: finishMode === 'colors' ? '#BA2025' : 'transparent',
+                  color: finishMode === 'colors' ? 'white' : '#ccc',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Colors
+              </button>
+              <button
+                onClick={() => setFinishMode('patterns')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: finishMode === 'patterns' ? '#BA2025' : 'transparent',
+                  color: finishMode === 'patterns' ? 'white' : '#ccc',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                Patterns
+              </button>
+            </div>
+          )}
 
           {/* Pattern Mode: Toggle between Pattern selection and Color override */}
-          {finishMode === 'patterns' && (
+          {modalPartId !== 'triggerAssembly' && finishMode === 'patterns' && (
             <div style={{
               display: 'flex',
               backgroundColor: 'rgba(255,255,255,0.05)',
@@ -611,7 +677,7 @@ function LuxuryConfigModal() {
           )}
 
           {/* Info Banner */}
-          {finishMode === 'patterns' && showingOverride && (
+          {modalPartId !== 'triggerAssembly' && finishMode === 'patterns' && showingOverride && (
             <div style={{
               backgroundColor: '#ba2025df',
               border: '1px solid #BA2025',
@@ -624,67 +690,71 @@ function LuxuryConfigModal() {
             </div>
           )}
 
-          {/* Configuration Section Title */}
-          <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
-            {finishMode === 'patterns' 
-              ? (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
-              : 'Available Colors'
-            }
-          </div>
+          {/* Configuration Section Title - Only show for configurable parts */}
+          {modalPartId !== 'triggerAssembly' && availableOptions.length > 0 && (
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
+              {finishMode === 'patterns' 
+                ? (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
+                : 'Available Colors'
+              }
+            </div>
+          )}
           
-          {/* Options List - Scrollable */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {availableOptions.map(option => (
-              <div
-                key={option.id}
-                onClick={() => handleOptionSelect(option.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '15px',
-                  backgroundColor: currentSelection === option.id ? '#BA2025' : 'rgba(255,255,255,0.1)',
-                  border: `2px solid ${currentSelection === option.id ? '#BA2025' : 'transparent'}`,
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {/* Preview */}
-                {option.material?.type === 'texture' && option.thumbnail ? (
-                  <img
-                    src={option.thumbnail}
-                    alt={option.label}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '4px',
-                      marginRight: '15px',
-                      objectFit: 'cover',
-                      border: '2px solid rgba(255,255,255,0.3)'
-                    }}
-                  />
-                ) : (
-                  <div 
-                    style={{ 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%',
-                      backgroundColor: getMaterialColor(option.material),
-                      marginRight: '15px',
-                      border: '2px solid rgba(255,255,255,0.3)'
-                    }}
-                  />
-                )}
-                
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', color: 'white' }}>{option.label}</div>
+          {/* Options List - Scrollable - Only show for configurable parts */}
+          {modalPartId !== 'triggerAssembly' && availableOptions.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {availableOptions.map(option => (
+                <div
+                  key={option.id}
+                  onClick={() => handleOptionSelect(option.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '15px',
+                    backgroundColor: currentSelection === option.id ? '#BA2025' : 'rgba(255,255,255,0.1)',
+                    border: `2px solid ${currentSelection === option.id ? '#BA2025' : 'transparent'}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {/* Preview */}
+                  {option.material?.type === 'texture' && option.thumbnail ? (
+                    <img
+                      src={option.thumbnail}
+                      alt={option.label}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '4px',
+                        marginRight: '15px',
+                        objectFit: 'cover',
+                        border: '2px solid rgba(255,255,255,0.3)'
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        borderRadius: '50%',
+                        backgroundColor: getMaterialColor(option.material),
+                        marginRight: '15px',
+                        border: '2px solid rgba(255,255,255,0.3)'
+                      }}
+                    />
+                  )}
+                  
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', color: 'white' }}>{option.label}</div>
+                  </div>
+                  {currentSelection === option.id && (
+                    <div style={{ color: 'white', fontSize: '20px' }}>✓</div>
+                  )}
                 </div>
-                {currentSelection === option.id && (
-                  <div style={{ color: 'white', fontSize: '20px' }}>✓</div>
-                )}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer - FIXED AT BOTTOM */}
@@ -697,25 +767,27 @@ function LuxuryConfigModal() {
           flexShrink: 0,
           backgroundColor: '#1a1a1a'
         }}>
-          {/* Reset to Pattern button - always visible but disabled if no override */}
-          <button 
-            onClick={handleResetToPattern}
-            disabled={!hasColorOverride}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: 'transparent',
-              border: `2px solid ${hasColorOverride ? '#BA2025' : '#555'}`,
-              color: hasColorOverride ? '#BA2025' : '#555',
-              borderRadius: '6px',
-              cursor: hasColorOverride ? 'pointer' : 'not-allowed',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              opacity: hasColorOverride ? 1 : 0.5,
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Reset to Pattern
-          </button>
+          {/* Reset to Pattern button - only show for configurable parts with override */}
+          {modalPartId !== 'triggerAssembly' && (
+            <button 
+              onClick={handleResetToPattern}
+              disabled={!hasColorOverride}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: 'transparent',
+                border: `2px solid ${hasColorOverride ? '#BA2025' : '#555'}`,
+                color: hasColorOverride ? '#BA2025' : '#555',
+                borderRadius: '6px',
+                cursor: hasColorOverride ? 'pointer' : 'not-allowed',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                opacity: hasColorOverride ? 1 : 0.5,
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Reset to Pattern
+            </button>
+          )}
           
           <button 
             onClick={handleClose}
@@ -727,7 +799,8 @@ function LuxuryConfigModal() {
               borderRadius: '6px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '14px'
+              fontSize: '14px',
+              marginLeft: modalPartId === 'triggerAssembly' ? 'auto' : '0'
             }}
           >
             Confirm
@@ -750,7 +823,8 @@ function LuxuryConfigurator() {
   
   return (
     <>
-      {/* Premium Hotspots */}
+      {/* Hotspots disabled - using direct part clicking with red glow instead */}
+      {/* 
       <group>
         {computedHotspots.map((hotspot) => (
           <LuxuryHotspot
@@ -762,6 +836,7 @@ function LuxuryConfigurator() {
           />
         ))}
       </group>
+      */}
     </>
   );
 }

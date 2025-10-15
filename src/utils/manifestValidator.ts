@@ -47,6 +47,13 @@ const SuppressorSchema = z.object({
   modelFile: z.string(), // GLB filename
 });
 
+// NEW: Trigger schema
+const TriggerSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  description: z.string().optional(),
+});
+
 // NEW: Texture system schemas
 const TextureRepeatSchema = z.record(z.string(), z.tuple([z.number(), z.number()])).and(
   z.object({
@@ -167,6 +174,7 @@ export const ManifestSchema = z.object({
   finishModes: FinishModesSchema.optional(),
   calibers: z.array(CaliberSchema).optional(), // NEW: Caliber options
   suppressors: z.array(SuppressorSchema).optional(), // NEW: Suppressor options
+  triggers: z.array(TriggerSchema).optional(), // NEW: Trigger options
 });
 
 // TypeScript types derived from schemas
@@ -180,6 +188,9 @@ export type Caliber = z.infer<typeof CaliberSchema>;
 
 // NEW: Suppressor type
 export type Suppressor = z.infer<typeof SuppressorSchema>;
+
+// NEW: Trigger type
+export type Trigger = z.infer<typeof TriggerSchema>;
 
 // NEW: Texture system types
 export type ColorMaterial = z.infer<typeof ColorMaterialSchema>;

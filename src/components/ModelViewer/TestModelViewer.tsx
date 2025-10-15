@@ -3,6 +3,7 @@ import { useRef, useEffect, Suspense, useMemo } from 'react';
 import { useGLTF, OrbitControls, Environment, ContactShadows, Center, useTexture } from '@react-three/drei';
 import { useConfigStore } from '../../state/useConfigStore';
 import * as THREE from 'three';
+import { useThree } from '@react-three/fiber';
 
 // ================================================================
 // FLEXIBLE MESH MATCHING UTILITIES
@@ -507,19 +508,59 @@ function LoadingFallback() {
   );
 }
 
+// Camera setup component to set initial position based on device type
+function CameraSetup({ distance }: { distance: number }) {
+  const { camera } = useThree();
+  
+  useEffect(() => {
+    camera.position.set(0, 0, distance);
+    camera.updateProjectionMatrix();
+    console.log('CameraSetup: Set initial camera distance to:', distance);
+  }, [camera, distance]);
+  
+  return null;
+}
+
 export function TestModelViewer({ productPath, onLoadComplete }: { productPath: string; onLoadComplete?: () => void }) {
   const { getCurrentModelFile, selectedSuppressor } = useConfigStore();
   const modelFile = getCurrentModelFile();
   
+  // Detect mobile device
+  const isMobile = useMemo(() => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+           || window.innerWidth < 768;
+  }, []);
+  
+  // Set camera distances based on device type
+  const cameraDistances = useMemo(() => {
+    if (isMobile) {
+      return {
+        min: 14,  // Zoom out more on mobile
+        max: 25,
+        default: 18 // Start further back on mobile
+      };
+    }
+    return {
+      min: 9,
+      max: 15,
+      default: 12
+    };
+  }, [isMobile]);
+  
   console.log('TestModelViewer: Rendering with model file:', modelFile);
   console.log('TestModelViewer: Selected suppressor:', selectedSuppressor);
+  console.log('TestModelViewer: Is mobile device:', isMobile);
+  console.log('TestModelViewer: Camera distances:', cameraDistances);
   
   return (
     <>
+      {/* Set initial camera position based on device */}
+      <CameraSetup distance={cameraDistances.default} />
+      
       <OrbitControls
         makeDefault
-        minDistance={9}
-        maxDistance={15}
+        minDistance={cameraDistances.min}
+        maxDistance={cameraDistances.max}
         target={[0, 0, 0]}
         enableZoom={true}
         enablePan={true}
