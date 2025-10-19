@@ -418,6 +418,18 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
                     console.log(`🎨 Pattern "${selectedPattern}" → ${partId} (${child.name})`);
                   }
                 }
+              } else if (finishMode === 'patterns' && !selectedPattern) {
+                // 🔥 NEW: Patterns mode without pattern - use color customization or fallback
+                const colorId = partColorOverrides[partId] || selectedColors[partId];
+                if (colorId) {
+                  const colorOption = manifest.finishModes.colors?.options?.find(
+                    (option: any) => option.id === colorId
+                  );
+                  if (colorOption) {
+                    materialToApply = createMaterialFromDefinition(colorOption.material, partId);
+                    console.log(`🎨 Color customization "${colorId}" → ${partId} (${child.name})`);
+                  }
+                }
               } else if (finishMode === 'colors') {
                 // Apply individual colors
                 if (selectedColors[partId]) {
@@ -503,7 +515,7 @@ function LoadingFallback() {
   return (
     <mesh position={[0, 0, 0]}>
       <boxGeometry args={[0.5, 0.1, 0.1]} />
-      <meshStandardMaterial color="#fbbf24" />
+      <meshStandardMaterial color="#ffffff01" />
     </mesh>
   );
 }
@@ -572,35 +584,43 @@ export function TestModelViewer({ productPath, onLoadComplete }: { productPath: 
         dampingFactor={0.1}
       />
       
-      {/* Enhanced ambient lighting for overall brightness */}
-      <ambientLight intensity={1.5} />
-      
-      {/* Hemisphere light for soft fill from above and below */}
-      <hemisphereLight intensity={0.8} groundColor="#666666" />
-      
-      {/* Main key light from front-right */}
-      <directionalLight position={[5, 5, 5]} intensity={2.0} castShadow />
-      
-      {/* IMPROVED: Strong fill light from LEFT side */}
-      <directionalLight position={[-10, 3, 2]} intensity={2.0} />
-      
-      {/* IMPROVED: Strong fill light from RIGHT side */}
-      <directionalLight position={[10, 3, 2]} intensity={2.0} />
-      
-      {/* Back lights for rim lighting and edge definition */}
-      <directionalLight position={[0, 5, -8]} intensity={1.2} />
-      <directionalLight position={[-5, 2, -5]} intensity={1.0} />
-      <directionalLight position={[5, 2, -5]} intensity={1.0} />
-      
-      {/* Bottom fill to reduce shadow darkness */}
-      <directionalLight position={[0, -5, 3]} intensity={0.8} />
-      
-      {/* IMPROVED: Additional side lights at mid-height for detail */}
-      <directionalLight position={[-8, 0, 0]} intensity={1.2} />
-      <directionalLight position={[8, 0, 0]} intensity={1.2} />
-      
-      {/* Enhanced environment lighting */}
-      <Environment preset="city" background={false} />
+{/* Base ambient light */}
+<ambientLight intensity={0.6} />
+
+{/* Hemisphere for soft top/bottom fill */}
+<hemisphereLight intensity={0.4} groundColor="#333333" />
+
+{/* SYMMETRICAL KEY LIGHTS - One on each side */}
+<directionalLight 
+  position={[8, 5, 3]} 
+  intensity={1.0} 
+  castShadow 
+  shadow-mapSize={[2048, 2048]}
+/>
+<directionalLight 
+  position={[-8, 5, 3]} 
+  intensity={1.0} 
+/>
+
+{/* SYMMETRICAL FILL LIGHTS - Front corners */}
+<directionalLight position={[5, 3, 8]} intensity={0.7} />
+<directionalLight position={[-5, 3, 8]} intensity={0.7} />
+
+{/* SYMMETRICAL BACK LIGHTS - Rear corners */}
+<directionalLight position={[5, 3, -8]} intensity={0.6} />
+<directionalLight position={[-5, 3, -8]} intensity={0.6} />
+
+{/* Bottom fill for underside */}
+<directionalLight position={[0, -4, 0]} intensity={0.5} />
+
+{/* Environment */}
+<Environment preset="warehouse" background={false} environmentIntensity={0.5} />
+
+{/* Shadow plane */}
+<mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.5, 0]} receiveShadow>
+  <planeGeometry args={[50, 50]} />
+  <shadowMaterial opacity={0.2} />
+</mesh>
       
       <Suspense fallback={<LoadingFallback />} key={modelFile}>
         <RifleModel productPath={productPath} modelFile={modelFile} onLoadComplete={onLoadComplete} />

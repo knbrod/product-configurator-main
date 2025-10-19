@@ -217,17 +217,35 @@ export const useConfigStore = create<ConfigState>()(
       // Finish mode actions
       setFinishMode: (mode: FinishMode) => {
         console.log('Setting finish mode to:', mode);
-        set({ 
+        const { selectedColors } = get();
+        
+        const updates: any = { 
           finishMode: mode,
           configId: generateConfigId(),
-        });
+        };
+        
+        if (mode === 'patterns') {
+          // When switching to patterns mode, DON'T clear overrides
+          // This preserves any color customizations already made
+          console.log('📋 Switching to patterns mode, preserving any existing customizations');
+        } else if (mode === 'colors') {
+          // When switching to colors mode, clear pattern overrides
+          console.log('🧹 Clearing all pattern overrides when switching to colors mode');
+          updates.partColorOverrides = {};
+        }
+        
+        set(updates);
       },
 
       selectPattern: (patternId: string) => {
         console.log('Selecting pattern:', patternId);
+        
+        // Clear overrides when selecting a new pattern
+        // This gives a clean slate for each pattern
         set({ 
           selectedPattern: patternId,
           finishMode: 'patterns',
+          partColorOverrides: {}, // Clear old overrides
           configId: generateConfigId(),
         });
       },
@@ -470,7 +488,7 @@ export const useConfigStore = create<ConfigState>()(
           selectedSuppressor: defaultSuppressor?.id || null,
           selectedTrigger: defaultTrigger?.id || null,
           selectedOptions: defaultOptions,
-          partColorOverrides: {},
+          partColorOverrides: {},  // Clear all overrides
           activePartId: null,
           activeGroupId: null,
           isCinemaMode: false,
@@ -490,69 +508,160 @@ export const useConfigStore = create<ConfigState>()(
 
       getSelectedMaterials: () => {
         const { manifest, finishMode, selectedPattern, selectedColors, selectedOptions, partColorOverrides } = get();
-        console.log('🎨 getSelectedMaterials called:', { finishMode, selectedPattern, partColorOverrides });
+        console.log('🎨 getSelectedMaterials called:', { 
+          finishMode, 
+          selectedPattern, 
+          partColorOverridesCount: Object.keys(partColorOverrides).length,
+          selectedColorsCount: Object.keys(selectedColors).length 
+        });
         
         if (!manifest) return {};
 
         const materials: Record<string, any> = {};
 
+        // Define meshes that should ALWAYS stay black
+        const alwaysBlackMeshes = [
+          'Direct_Thread_HUB_Mount',
+          '*HUB_Mount*',
+          'CT_2-006_Bolt_Handle_Shaft',
+          'CT_2-007_Bolt_Handle_Knob',
+          'CT_5-013-2_Bipod_Locking_Pin_Release_Knob',
+          'CT_5-013-2_Bipod_Locking_Pin_Release_Knob001',
+          'CT_5-018-2_Bipod_Foot_Release_Housing',
+          'CT_5-018-2_Bipod_Foot_Release_Housing001',
+          'CT_5-020_Bipod_Foot_Release',
+          'CT_5-020_Bipod_Foot_Release001'
+        ];
+
+        const blackMaterial = {
+          type: 'color',
+          color: '#000000',
+          metalness: 0.3,
+          roughness: 0.8
+        };
+
+        // Helper function to check if a mesh should stay black
+        const shouldStayBlack = (meshName: string): boolean => {
+          return alwaysBlackMeshes.some(pattern => {
+            if (pattern.startsWith('*') && pattern.endsWith('*')) {
+              const search = pattern.slice(1, -1);
+              return meshName.includes(search);
+            }
+            return meshName === pattern;
+          });
+        };
+
         // FORCE TRIGGER ASSEMBLY TO ALWAYS BE BLACK
         const triggerPart = manifest.parts?.find(p => p.id === 'triggerAssembly');
         if (triggerPart) {
-          const blackMaterial = {
-            type: 'color',
-            color: '#000000',
-            metalness: 0.3,
-            roughness: 0.8
-          };
           triggerPart.meshSelectors?.forEach(selector => {
             materials[selector] = blackMaterial;
           });
-          console.log('🔫 Applied black material to trigger assembly meshes:', triggerPart.meshSelectors);
+          console.log('🔫 Applied black material to trigger assembly meshes');
         }
 
-        if (finishMode === 'patterns' && selectedPattern) {
-          console.log('🎨 Pattern mode with pattern:', selectedPattern);
-          // Pattern mode: apply pattern to all parts, but respect color overrides
-          const patternOption = manifest.finishModes?.patterns?.options?.find(
-            option => option.id === selectedPattern
-          );
+        const configurableParts = manifest.configurableParts || [];
+
+        if (finishMode === 'patterns') {
+          console.log('🎨 PATTERN MODE');
+          const hasAnyOverrides = Object.keys(partColorOverrides).length > 0;
+          console.log('   Has overrides:', hasAnyOverrides);
+          console.log('   Selected pattern:', selectedPattern);
           
-          if (patternOption) {
-            const configurableParts = manifest.configurableParts || [];
+          if (selectedPattern) {
+            console.log('   → Applying pattern with overrides');
+            // Pattern mode with pattern: apply pattern to all parts, but respect color overrides
+            const patternOption = manifest.finishModes?.patterns?.options?.find(
+              option => option.id === selectedPattern
+            );
+            
+            if (patternOption) {
+              configurableParts.forEach(partId => {
+                const colorOverride = partColorOverrides[partId];
+                
+                if (colorOverride) {
+                  const colorOption = manifest.finishModes?.colors?.options?.find(
+                    option => option.id === colorOverride
+                  );
+                  if (colorOption) {
+                    const part = manifest.parts?.find(p => p.id === partId);
+                    if (part) {
+                      part.meshSelectors?.forEach(selector => {
+                        if (!shouldStayBlack(selector)) {
+                          materials[selector] = colorOption.material;
+                        }
+                      });
+                    }
+                  }
+                } else {
+                  const part = manifest.parts?.find(p => p.id === partId);
+                  if (part) {
+                    part.meshSelectors?.forEach(selector => {
+                      if (!shouldStayBlack(selector)) {
+                        materials[selector] = patternOption.material;
+                      }
+                    });
+                  }
+                }
+              });
+            }
+          } else if (hasAnyOverrides) {
+            console.log('   → Using color customizations (with fallback to selectedColors)');
+            // Pattern mode but no pattern - check overrides first, then fallback to selectedColors
             configurableParts.forEach(partId => {
-              // Check if this part has a color override
+              // Check override first
               const colorOverride = partColorOverrides[partId];
+              // Fallback to selectedColors if no override
+              const colorId = colorOverride || selectedColors[partId];
               
-              if (colorOverride) {
-                console.log('🎨 Part', partId, 'has color override:', colorOverride);
-                // Use the color override instead of pattern
+              console.log(`     Part ${partId}: override=${colorOverride}, fallback=${selectedColors[partId]}, final=${colorId}`);
+              
+              if (colorId) {
                 const colorOption = manifest.finishModes?.colors?.options?.find(
-                  option => option.id === colorOverride
+                  option => option.id === colorId
                 );
                 if (colorOption) {
                   const part = manifest.parts?.find(p => p.id === partId);
                   if (part) {
                     part.meshSelectors?.forEach(selector => {
-                      materials[selector] = colorOption.material;
-                      console.log('🎨 Applied color override to mesh:', selector);
+                      if (!shouldStayBlack(selector)) {
+                        materials[selector] = colorOption.material;
+                        console.log(`     ✅ Applied color to: ${selector} (${colorOption.label})`);
+                      }
                     });
                   }
                 }
-              } else {
-                // Use the pattern
-                const part = manifest.parts?.find(p => p.id === partId);
-                if (part) {
-                  part.meshSelectors?.forEach(selector => {
-                    materials[selector] = patternOption.material;
-                  });
+              }
+            });
+          } else {
+            console.log('   → FALLBACK: Using selectedColors from Colors mode');
+            console.log('   selectedColors:', selectedColors);
+            // CRITICAL FALLBACK: Use selectedColors to maintain appearance
+            configurableParts.forEach(partId => {
+              const colorId = selectedColors[partId];
+              console.log('     Part:', partId, '→ Color:', colorId);
+              if (colorId) {
+                const colorOption = manifest.finishModes?.colors?.options?.find(
+                  option => option.id === colorId
+                );
+                console.log('     Color option found:', colorOption?.label);
+                if (colorOption) {
+                  const part = manifest.parts?.find(p => p.id === partId);
+                  if (part) {
+                    part.meshSelectors?.forEach(selector => {
+                      if (!shouldStayBlack(selector)) {
+                        materials[selector] = colorOption.material;
+                        console.log('     ✅ Applied fallback color to:', selector);
+                      }
+                    });
+                  }
                 }
               }
             });
           }
         } else if (finishMode === 'colors') {
+          console.log('🎨 COLORS MODE - applying selectedColors');
           // Color mode: apply individual colors to parts
-          const configurableParts = manifest.configurableParts || [];
           configurableParts.forEach(partId => {
             const colorId = selectedColors[partId];
             if (colorId) {
@@ -564,7 +673,9 @@ export const useConfigStore = create<ConfigState>()(
                 const part = manifest.parts?.find(p => p.id === partId);
                 if (part) {
                   part.meshSelectors?.forEach(selector => {
-                    materials[selector] = colorOption.material;
+                    if (!shouldStayBlack(selector)) {
+                      materials[selector] = colorOption.material;
+                    }
                   });
                 }
               }
@@ -572,21 +683,12 @@ export const useConfigStore = create<ConfigState>()(
           });
         }
 
-        // Legacy compatibility: apply legacy options if no new system materials found
-        if (Object.keys(materials).length === 0) {
-          manifest.parts.forEach(part => {
-            const selectedOptionId = selectedOptions[part.id];
-            const option = part?.options?.find(o => o.id === selectedOptionId);
-            
-            if (option) {
-              part.meshSelectors?.forEach(selector => {
-                materials[selector] = option.material;
-              });
-            }
-          });
-        }
+        // Apply black material to all meshes that should stay black
+        alwaysBlackMeshes.forEach(pattern => {
+          materials[pattern] = blackMaterial;
+        });
 
-        console.log('🎨 Final materials:', materials);
+        console.log('🎨 Final material count:', Object.keys(materials).length);
         return materials;
       },
 
