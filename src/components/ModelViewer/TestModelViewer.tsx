@@ -355,7 +355,8 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
     partColorOverrides,
     getSelectedMaterials,
     manifest,
-    modalPartId 
+    modalPartId,
+    selectedSuppressor
   } = useConfigStore();
   
   console.log('RifleModel: Loaded GLB successfully');
@@ -363,6 +364,7 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
   console.log('RifleModel: Selected pattern:', selectedPattern);
   console.log('RifleModel: Selected colors:', selectedColors);
   console.log('RifleModel: Part color overrides:', partColorOverrides);
+  console.log('RifleModel: Selected suppressor:', selectedSuppressor);
   
   // Create a stable scene copy that won't be re-cloned
   const stableScene = useMemo(() => {
@@ -489,6 +491,66 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
               roughness: 0.8,
             });
             return;
+          }
+
+          // ============================================
+          // SPECIAL CASE: Direct_Thread_HUB_Mount
+          // ============================================
+          // This piece connects barrel to suppressor and should:
+          // - Match suppressor color when suppressor is attached
+          // - Be configurable independently when no suppressor
+          if (child.name === 'Direct_Thread_HUB_Mount') {
+            // Check if a suppressor is currently selected (not 'none')
+            if (selectedSuppressor && selectedSuppressor !== 'none') {
+              // Suppressor is attached - match its color
+              console.log('🔧 Hub mount: Matching suppressor color');
+              
+              // Find the suppressor's material by looking at muzzleBrake part's current color
+              const muzzleBrakePartId = 'muzzleBrake';
+              let suppressorMaterial: THREE.MeshStandardMaterial | null = null;
+              
+              // Check if muzzle brake has a color override (in pattern mode with custom color)
+              if (partColorOverrides[muzzleBrakePartId]) {
+                const colorOption = manifest.finishModes.colors?.options?.find(
+                  (option: any) => option.id === partColorOverrides[muzzleBrakePartId]
+                );
+                if (colorOption) {
+                  suppressorMaterial = createMaterialFromDefinition(colorOption.material, muzzleBrakePartId);
+                }
+              } 
+              // Otherwise use the current finish mode selection
+              else if (finishMode === 'patterns' && selectedPattern) {
+                const patternOption = manifest.finishModes.patterns?.options?.find(
+                  (option: any) => option.id === selectedPattern
+                );
+                if (patternOption) {
+                  suppressorMaterial = createMaterialFromDefinition(patternOption.material, muzzleBrakePartId);
+                }
+              } else if (finishMode === 'colors' && selectedColors[muzzleBrakePartId]) {
+                const colorOption = manifest.finishModes.colors?.options?.find(
+                  (option: any) => option.id === selectedColors[muzzleBrakePartId]
+                );
+                if (colorOption) {
+                  suppressorMaterial = createMaterialFromDefinition(colorOption.material, muzzleBrakePartId);
+                }
+              }
+              
+              // Apply the suppressor material to hub mount
+              if (suppressorMaterial) {
+                if (Array.isArray(child.material)) {
+                  child.material = child.material.map(() => suppressorMaterial!.clone());
+                } else {
+                  child.material = suppressorMaterial;
+                }
+                child.material.needsUpdate = true;
+                console.log('✅ Hub mount matched to suppressor color');
+                return; // Skip normal material application
+              }
+            }
+            
+            // If no suppressor or couldn't find suppressor material, 
+            // let it fall through to normal configurable part logic below
+            console.log('🔧 Hub mount: Using configurable color (no suppressor)');
           }
 
           // Check if this mesh should get material applied
@@ -654,7 +716,7 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
       }
       console.log('=== Material Application Complete ===');
     }
-  }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene, hoveredMesh, selectedMesh]);
+  }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene, hoveredMesh, selectedMesh, selectedSuppressor]);
 
   return (
     <Center>
