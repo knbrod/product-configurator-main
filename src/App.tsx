@@ -50,6 +50,8 @@ function App() {
   const [showOrderModal, setShowOrderModal] = useState(false); // Order process modal
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [emailOptIn, setEmailOptIn] = useState(false); // Email opt-in state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false); // Share modal
 
@@ -135,8 +137,8 @@ function App() {
 
   // Handle order process submission
   const handleStartOrder = async () => {
-    if (!customerName || !customerEmail) {
-      showToast('Please enter your name and email', 'error');
+    if (!customerName || !customerEmail || !customerPhone) {
+      showToast('Please enter your name, email, and phone number', 'error');
       return;
     }
 
@@ -144,6 +146,13 @@ function App() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerEmail)) {
       showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Validate phone (basic validation - at least 10 digits)
+    const phoneDigits = customerPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      showToast('Please enter a valid phone number', 'error');
       return;
     }
 
@@ -222,23 +231,49 @@ function App() {
         });
       }
 
-      // Prepare configuration data
+      // Prepare configuration data with ALL selections
       const configData = {
+        // Part finishes
         receiver_finish: getPartFinish('receiver'),
         barrel_finish: getPartFinish('barrel'),
+        stock_finish: getPartFinish('stock'),
         cheek_piece_finish: getPartFinish('cheekPiece'),
         bolt_finish: getPartFinish('boltBody'),
         magazine_finish: getPartFinish('magazine'),
         bipod_finish: getPartFinish('bipodMonopod'),
-        muzzle_device_finish: getPartFinish('muzzleBrake'),
+        handguard_finish: getPartFinish('handguard'),
+        muzzle_brake_finish: getPartFinish('muzzleBrake'),
+        
+        // Pattern/coating name
         pattern_name: finishMode === 'patterns' && selectedPattern 
           ? getFinishName(selectedPattern, true) 
-          : 'Custom Configuration',
-        caliber: manifest.calibers?.find(c => c.id === state.selectedCaliber)?.label || 'Not specified',
-        suppressor_option: manifest.suppressors?.find(s => s.id === state.selectedSuppressor)?.label || 'Not specified',
+          : 'Custom Individual Colors',
+        
+        // Hardware selections
+        caliber: manifest.calibers?.find((c: any) => c.id === state.selectedCaliber)?.label || 'Not specified',
+        
+        // Muzzle device (suppressor or muzzle brake)
+        muzzle_device: state.selectedSuppressor && state.selectedSuppressor !== 'none'
+          ? manifest.suppressors?.find((s: any) => s.id === state.selectedSuppressor)?.label || 'Standard Muzzle Brake'
+          : 'Standard Muzzle Brake',
+        
+        // Trigger (if triggers exist in manifest)
+        trigger: (manifest as any).triggers?.find((t: any) => t.id === state.selectedTrigger)?.label || 'Standard Trigger',
+        
+        // Customer info
         customer_name: customerName,
         customer_email: customerEmail,
-        screenshot: screenshot
+        customer_phone: customerPhone,
+        
+        // Email opt-in
+        email_opt_in: emailOptIn,
+        
+        // Screenshot
+        screenshot: screenshot,
+        
+        // Metadata
+        configuration_date: new Date().toISOString(),
+        finish_mode: finishMode
       };
 
       console.log('Sending configuration data:', configData);
@@ -926,7 +961,7 @@ function App() {
               marginBottom: '30px'
             }}>
               <img 
-                src="/logo.png" 
+                src="https://cheytac.com/wp-content/uploads/2025/03/cropped-Cheytac-Logos-white.png" 
                 alt="CheyTac USA" 
                 style={{ 
                   height: '60px', 
@@ -947,7 +982,7 @@ function App() {
                 color: '#aaa',
                 fontSize: '14px'
               }}>
-                We'll save your configuration and take you to complete your M200 order
+                We'll save your configuration and contact you to complete your M200 order
               </p>
             </div>
 
@@ -984,7 +1019,7 @@ function App() {
               />
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
+            <div style={{ marginBottom: '25px' }}>
               <label style={{
                 display: 'block',
                 color: '#e5e5e5',
@@ -1017,6 +1052,93 @@ function App() {
               />
             </div>
 
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px'
+              }}>
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            {/* EMAIL OPT-IN CHECKBOX */}
+            <div style={{
+              margin: '30px 0 20px 0',
+              padding: '20px',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(186, 32, 37, 0.3)',
+              borderRadius: '4px'
+            }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                cursor: 'pointer',
+                color: '#ccc'
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={emailOptIn}
+                  onChange={(e) => setEmailOptIn(e.target.checked)}
+                  disabled={isSubmitting}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    marginRight: '15px',
+                    marginTop: '3px',
+                    accentColor: '#BA2025',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{ flex: 1 }}>
+                  <strong style={{ color: '#BA2025', fontSize: '16px', display: 'block', marginBottom: '5px' }}>
+                    Seize the Distance and Stay Updated!
+                  </strong>
+                  <span style={{ color: '#aaa', fontSize: '14px' }}>
+                    Get exclusive updates on new CheyTac products, limited releases, special offers, and merchandise. 
+                    Unsubscribe anytime.
+                  </span>
+                </span>
+              </label>
+              
+              <p style={{
+                margin: '12px 0 0 35px',
+                fontSize: '11px',
+                color: '#666',
+                lineHeight: '1.5'
+              }}>
+                By checking this box, you consent to receive marketing emails from CheyTac USA. 
+                We respect your privacy and never share your information. 
+                <a href="https://cheytac.com/privacy-policy" target="_blank" style={{ color: '#BA2025', textDecoration: 'none' }}>
+                  Privacy Policy
+                </a>
+              </p>
+            </div>
+
+            {/* BUTTONS */}
             <div style={{
               display: 'flex',
               gap: '12px'
@@ -1027,6 +1149,8 @@ function App() {
                     setShowOrderModal(false);
                     setCustomerName('');
                     setCustomerEmail('');
+                    setCustomerPhone('');
+                    setEmailOptIn(false);
                   }
                 }}
                 disabled={isSubmitting}

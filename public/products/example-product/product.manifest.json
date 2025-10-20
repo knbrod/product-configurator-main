@@ -26,15 +26,15 @@
       "summary": "Hand Guard"
     },
     {
-      "partId": "cheekPiece",
+      "partId": "buttstock",
       "position": { "x": 0.2, "y": 0.8, "z": -6.0 },
-      "title": "Cheek Piece",
-      "summary": "Stock"
+      "title": "Buttstock",
+      "summary": "Adjustable stock assembly"
     },
     {
       "partId": "moaRail",
       "position": { "x": 0, "y": 0.8, "z": -2.0 },
-      "title": "MOA Rail",
+      "title": "40 MOA Rail",
       "summary": "40 MOA Scope Rail"
     },
     {
@@ -56,10 +56,16 @@
       "summary": "Brake"
     },
     {
-      "partId": "bipodMonopod",
+      "partId": "bipod",
       "position": { "x": 0, "y": -0.6, "z": 2.0 },
-      "title": "Bipod/Monopod",
-      "summary": "Support"
+      "title": "Bipod",
+      "summary": "Bipod support"
+    },
+    {
+      "partId": "monopod",
+      "position": { "x": 0, "y": -0.8, "z": -6.5 },
+      "title": "Monopod",
+      "summary": "Rear monopod support"
     },
     {
       "partId": "boltHandle",
@@ -88,27 +94,32 @@
     {
       "groupId": "ergonomics",
       "label": "Ergonomics",
-      "partIds": ["receiver", "cheekPiece", "carryHandle", "boltHandle", "triggerAssembly"]
+      "partIds": ["receiver", "buttstock", "carryHandle", "boltHandle", "triggerAssembly"]
     },
     {
       "groupId": "finish",
       "label": "Finishing",
-      "partIds": ["barrel", "handGuard", "receiver", "muzzleBrake", "bipodMonopod"]
+      "partIds": ["barrel", "handGuard", "receiver", "muzzleBrake", "bipod", "monopod"]
     }
   ],
   "configurableParts": [
     "barrel",
     "receiver", 
     "handGuard",
-    "cheekPiece",
+    "buttstock",
     "moaRail",
     "magazine",
     "carryHandle",
     "handleClamp",
     "muzzleBrake",
-    "bipodMonopod",
+    "bipod",
+    "monopod",
     "boltHandle",
-    "triggerAssembly"
+    "stockLock",
+    "boltRelease",
+    "magRelease",
+    "stockRodSpacer",
+    "triggerGuard"
   ],
   "finishModes": {
     "colors": {
@@ -121,9 +132,9 @@
           "label": "Cerakote® Absolute Black",
           "material": {
             "type": "color",
-            "color": "#000000",
-            "metalness": 0.3,
-            "roughness": 0.8
+            "color": "#1C1C1C",
+            "metalness": 0.1,
+            "roughness": 0.95
           }
         },
         {
@@ -131,9 +142,9 @@
           "label": "Cerakote® Flat Dark Earth",
           "material": {
             "type": "color",
-            "color": "#7A6C5F",
-            "metalness": 0.3,
-            "roughness": 0.8
+            "color": "#957B5F",
+            "metalness": 0.1,
+            "roughness": 0.95
           }
         },
         {
@@ -141,9 +152,9 @@
           "label": "Cerakote® O.D. Green",
           "material": {
             "type": "color",
-            "color": "#59574D",
-            "metalness": 0.3,
-            "roughness": 0.8
+            "color": "#4A5335",
+            "metalness": 0.1,
+            "roughness": 0.95
           }
         },
         {
@@ -151,8 +162,8 @@
           "label": "Cerakote® Tungsten",
           "material": {
             "type": "color",
-            "color": "#656763",
-            "metalness": 0.3,
+            "color": "#4A4D4E",
+            "metalness": 0.4,
             "roughness": 0.8
           }
         },
@@ -161,8 +172,8 @@
           "label": "Cerakote® Vortex Bronze",
           "material": {
             "type": "color",
-            "color": "#58504E",
-            "metalness": 0.3,
+            "color": "#6B5D52",
+            "metalness": 0.2,
             "roughness": 0.8
           }
         }
@@ -249,6 +260,11 @@
       "id": "375-cheytac",
       "label": ".375 CheyTac",
       "description": "2,950 fps muzzle velocity | 6,775 ft-lbs muzzle energy | Effective range 2,500+ yards",
+      "specifications": {
+        "bulletWeight": "350 grain",
+        "muzzleVelocity": "2,950 fps",
+        "energy": "6,775 ft-lbs"
+      },
       "barrelSpecs": {
         "length": "29.5 inches",
         "twistRate": "1:9.5",
@@ -267,6 +283,11 @@
       "id": "408-cheytac",
       "label": ".408 CheyTac",
       "description": "2,850 fps muzzle velocity | 7,600 ft-lbs muzzle energy | Effective range 2,300+ yards",
+      "specifications": {
+        "bulletWeight": "419 grain",
+        "muzzleVelocity": "2,850 fps",
+        "energy": "7,600 ft-lbs"
+      },
       "barrelSpecs": {
         "length": "29.5 inches",
         "twistRate": "1:10",
@@ -286,42 +307,42 @@
     {
       "id": "m3-suppressor",
       "label": "M3 Suppressor",
-      "description": "CheyTac M3 Suppressor for .375/.408. 3D printed Haynes 282. Direct thread HUB. 8.1 in x 1.75 in. 19.8 oz suppressor, 3.2 oz HUB. Six helical chambers with integrated brake. 133 dB at ear, 25 dB reduction, minimal POI shift.",
+      "description": "CheyTac M3 Suppressor • 3D printed Haynes 282 nickel based super-alloy • Direct thread HUB mount • Six helical chambers with integrated brake • Dimensions: 8.42\" x 1.75\" • Weight: 19.8 oz (suppressor) + 3.2 oz (HUB) • Performance: 133 dB at ear, 25 dB reduction • Minimal POI shift • Muzzle brake included",
       "modelFile": "m200-m3-suppressor.glb"
     },
     {
       "id": "m2-suppressor",
       "label": "M2 Suppressor",
-      "description": "CheyTac USA M2 Suppressor for .375/.408. 3D printed Haynes 282 nickel based super alloy. Direct thread HUB compatible. Vented K baffle with six helical coaxial chambers and integrated flash hider. 8 in by 2 in. 24.6 oz suppressor, 3.2 oz HUB. 130.3 dB at ear with 25 dB reduction and minimal POI shift.",
+      "description": "CheyTac M2 Suppressor • 3D printed Haynes 282 nickel based super-alloy • Direct thread HUB mount • Vented K baffle design • Six helical coaxial chambers with integrated flash hider • Dimensions: 8.37\" x 2\" • Weight: 24.6 oz (suppressor) + 3.2 oz (HUB) • Performance: 130.3 dB at ear, 25 dB reduction • Minimal POI shift • Muzzle brake included",
       "modelFile": "m200-m2-suppressor.glb"
     },
     {
       "id": "no-suppressor",
-      "label": "No Suppressor",
-      "description": "Muzzle brake only configuration",
+      "label": "Muzzle Brake Only",
+      "description": "Standard muzzle brake configuration without suppressor",
       "modelFile": "m200-no-suppressor.glb"
     }
   ],
   "triggers": [
     {
       "id": "timney-elite-curved",
-      "label": "Timney Elite Hunter with Curved Trigger shoe",
-      "description": "Standard Elite Hunter trigger with curved shoe"
+      "label": "Timney Elite Hunter - Curved Shoe",
+      "description": "Single-stage trigger with curved shoe for precision shooting"
     },
     {
       "id": "timney-elite-straight",
-      "label": "Timney Elite Hunter with Straight Trigger shoe",
-      "description": "Standard Elite Hunter trigger with straight shoe"
+      "label": "Timney Elite Hunter - Straight Shoe",
+      "description": "Single-stage trigger with straight shoe for precision shooting"
     },
     {
       "id": "timney-2stage-curved",
-      "label": "Timney 2-stage trigger with Curved Trigger shoe",
-      "description": "Two-stage precision trigger with curved shoe"
+      "label": "Timney 2-Stage - Curved Shoe",
+      "description": "Two-stage trigger with curved shoe for enhanced control"
     },
     {
       "id": "timney-2stage-straight",
-      "label": "Timney 2-stage trigger with Straight Trigger shoe",
-      "description": "Two-stage precision trigger with straight shoe"
+      "label": "Timney 2-Stage - Straight Shoe",
+      "description": "Two-stage trigger with straight shoe for enhanced control"
     }
   ],
   "parts": [
@@ -358,8 +379,8 @@
       ]
     },
     {
-      "id": "cheekPiece",
-      "label": "Cheek Piece",
+      "id": "buttstock",
+      "label": "Buttstock",
       "meshSelectors": [
         "CT_4-008_Cheek_Piece",
         "CT_4-006_Cheek_Piece_Bracket",
@@ -371,7 +392,7 @@
     },
     {
       "id": "moaRail",
-      "label": "MOA Rail",
+      "label": "40 MOA Rail",
       "meshSelectors": [
         "CT_1-002_40_MOA_Rail",
         "*MOA_Rail*",
@@ -404,11 +425,13 @@
       "label": "Muzzle Device",
       "meshSelectors": [
         "CT408_SASS_Suppressor_-_175OD_-_Recoil_Compensator_-_Original_",
-        "Direct_Thread_HUB_Mount",
         "*Suppressor*",
         "*Muzzle*",
         "*Brake*",
-        "*Recoil_Compensator*",
+        "*Recoil_Compensator*"
+      ],
+      "excludeFromColor": [
+        "Direct_Thread_HUB_Mount",
         "*HUB_Mount*"
       ],
       "hasSuppressor": true
@@ -422,8 +445,8 @@
       ]
     },
     {
-      "id": "bipodMonopod",
-      "label": "Bipod/Monopod",
+      "id": "bipod",
+      "label": "Bipod",
       "meshSelectors": [
         "CT_5-007-2_Bipod_Bracket",
         "CT_5-009-2_Swivel_Guide_Plate",
@@ -432,19 +455,27 @@
         "CT_5-010-2_Bipod_Inner_Leg001",
         "CT_5-011-2_Bipod_Locking_Pin",
         "CT_5-011-2_Bipod_Locking_Pin001",
-        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob",
-        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob001",
         "CT_5-016-2_Bipod_Outer_Leg",
         "CT_5-016-2_Bipod_Outer_Leg001",
         "CT_5-017-2_Bipod_Foot_Adapter",
         "CT_5-017-2_Bipod_Foot_Adapter001",
+        "*Bipod*"
+      ],
+      "excludeFromColor": [
+        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob",
+        "CT_5-013-2_Bipod_Locking_Pin_Release_Knob001",
         "CT_5-018-2_Bipod_Foot_Release_Housing",
         "CT_5-018-2_Bipod_Foot_Release_Housing001",
         "CT_5-020_Bipod_Foot_Release",
-        "CT_5-020_Bipod_Foot_Release001",
+        "CT_5-020_Bipod_Foot_Release001"
+      ]
+    },
+    {
+      "id": "monopod",
+      "label": "Monopod",
+      "meshSelectors": [
         "CT_4-011_Monopod_Leg",
         "CT_4-012_Monopod_Foot",
-        "*Bipod*",
         "*Monopod*"
       ]
     },
@@ -453,38 +484,75 @@
       "label": "Bolt Handle",
       "meshSelectors": [
         "CT_2-006_Bolt_Handle_Base",
-        "CT_2-006_Bolt_Handle_Shaft",
-        "CT_2-007_Bolt_Handle_Knob",
         "CT_2-008_Bolt_Lock_Nut", 
         "CT_2-009_Bolt_Cam",
-        "*Bolt_Handle*",
+        "*Bolt_Handle_Base*",
         "*Bolt_Cam*"
+      ],
+      "excludeFromColor": [
+        "CT_2-006_Bolt_Handle_Shaft",
+        "CT_2-007_Bolt_Handle_Knob"
       ]
     },
     {
-  "id": "triggerAssembly",
-  "label": "Trigger Assembly",
-  "meshSelectors": [
-    "Trigger_Guard_2024",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2)_Bo",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_S",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__etySTEP",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__fety",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__ottom_Sa",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__otto",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_oval_",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_o",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__TEP-1_Do",
-    "CT_1-020_Timney_Elite_Hunter_Remington_7__ws,_cone",
-    "M200_Rifle_-_CT_1-020*",
-    "M200_Rifle-CT_1-020*",
-    "*Trigger_Guard*",
-    "*Trigger*",
-    "*Timney*"
-  ],
-  "hasTriggerOptions": true
+      "id": "stockLock",
+      "label": "Stock Lock",
+      "meshSelectors": [
+        "*Stock_Lock*"
+      ]
+    },
+    {
+      "id": "boltRelease",
+      "label": "Bolt Release",
+      "meshSelectors": [
+        "*Bolt_Release*"
+      ]
+    },
+    {
+      "id": "magRelease",
+      "label": "Magazine Release",
+      "meshSelectors": [
+        "*Mag_Release*",
+        "*Magazine_Release*"
+      ]
+    },
+    {
+      "id": "stockRodSpacer",
+      "label": "Stock Rod Spacer",
+      "meshSelectors": [
+        "*Stock_Rod_Spacer*"
+      ]
+    },
+    {
+      "id": "triggerGuard",
+      "label": "Trigger Guard",
+      "meshSelectors": [
+        "Trigger_Guard_2024",
+        "*Trigger_Guard*"
+      ]
+    },
+    {
+      "id": "triggerAssembly",
+      "label": "Trigger Assembly",
+      "meshSelectors": [
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2)_Bo",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__0-V2",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__Bottom_S",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__etySTEP",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__fety",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__ottom_Sa",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__otto",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_oval_",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__s,_o",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__TEP-1_Do",
+        "CT_1-020_Timney_Elite_Hunter_Remington_7__ws,_cone",
+        "M200_Rifle_-_CT_1-020*",
+        "M200_Rifle-CT_1-020*",
+        "*Trigger*",
+        "*Timney*"
+      ],
+      "hasTriggerOptions": true
     }
   ]
 }

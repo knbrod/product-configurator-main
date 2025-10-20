@@ -124,6 +124,7 @@ function LuxuryConfigModal() {
     selectPattern,
     setFinishMode,
     clearPartColorOverride,
+    applyColorToAllParts,
     getPartUIGroup,
     selectCaliber,
     selectSuppressor
@@ -191,32 +192,36 @@ function LuxuryConfigModal() {
       }
     }
     if (manifest.finishModes && finishMode === 'colors') {
-      return selectedColors[modalPartId];
+      // In colors mode, show if this color is selected for ALL parts
+      const firstColor = selectedColors[Object.keys(selectedColors)[0]];
+      const allSameColor = Object.values(selectedColors).every(color => color === firstColor);
+      return allSameColor ? firstColor : null;
     }
     return selectedOptions[modalPartId];
   };
 
   const currentSelection = getCurrentSelection();
 
+  // Handler functions
   const handleOptionSelect = (optionId: string) => {
     console.log('Option selected:', { optionId, finishMode, showingOverride, modalPartId });
     
-    if (manifest.finishModes && finishMode === 'patterns') {
+    if (finishMode === 'colors') {
+      // Colors mode: Apply to ALL parts globally
+      console.log('Applying color globally to all parts:', optionId);
+      applyColorToAllParts(optionId);
+    } else if (finishMode === 'patterns') {
       if (showingOverride) {
-        // Set color override for this part
+        // Pattern mode + Color Customization: Set color override for this specific part
         console.log('Setting color override for part:', modalPartId, 'color:', optionId);
         selectPartColor(modalPartId, optionId);
       } else {
-        // Select pattern for whole rifle
+        // Pattern mode + Rifle Pattern: Select pattern for whole rifle
         console.log('Selecting pattern for whole rifle:', optionId);
         selectPattern(optionId);
       }
-    } else if (manifest.finishModes && finishMode === 'colors') {
-      // For colors, apply to specific part
-      console.log('Selecting color for part:', modalPartId, 'color:', optionId);
-      selectPartColor(modalPartId, optionId);
     } else {
-      // Legacy system
+      // Legacy system fallback
       selectOption(modalPartId, optionId);
     }
   };
@@ -586,7 +591,7 @@ function LuxuryConfigModal() {
             </>
           )}
 
-          {/* MODE TOGGLE BUTTONS - Only show for configurable parts */}
+          {/* MAIN MODE TOGGLE - Colors vs Patterns - Only show for configurable parts */}
           {modalPartId !== 'triggerAssembly' && (
             <div style={{
               display: 'flex',
@@ -595,7 +600,10 @@ function LuxuryConfigModal() {
               padding: '4px'
             }}>
               <button
-                onClick={() => setFinishMode('colors')}
+                onClick={() => {
+                  setFinishMode('colors');
+                  setShowingOverride(false);
+                }}
                 style={{
                   flex: 1,
                   padding: '10px',
@@ -612,7 +620,10 @@ function LuxuryConfigModal() {
                 Colors
               </button>
               <button
-                onClick={() => setFinishMode('patterns')}
+                onClick={() => {
+                  setFinishMode('patterns');
+                  setShowingOverride(false);
+                }}
                 style={{
                   flex: 1,
                   padding: '10px',
@@ -676,26 +687,40 @@ function LuxuryConfigModal() {
             </div>
           )}
 
-          {/* Info Banner */}
-          {modalPartId !== 'triggerAssembly' && finishMode === 'patterns' && showingOverride && (
+          {/* Info Banner for Colors Mode */}
+          {modalPartId !== 'triggerAssembly' && finishMode === 'colors' && (
             <div style={{
-              backgroundColor: '#ba2025df',
-              border: '1px solid #BA2025',
+              backgroundColor: 'rgba(186, 32, 37, 0.2)',
+              border: '1px solid rgba(186, 32, 37, 0.5)',
               borderRadius: '8px',
               padding: '12px',
               fontSize: '13px',
               color: '#ccc'
             }}>
-               Select a color to accent the pattern for <strong>{part.label}</strong> only
+              Select a color to apply to <strong>all configurable parts</strong>
+            </div>
+          )}
+
+          {/* Info Banner for Pattern Mode - Color Customization */}
+          {modalPartId !== 'triggerAssembly' && finishMode === 'patterns' && showingOverride && (
+            <div style={{
+              backgroundColor: 'rgba(186, 32, 37, 0.2)',
+              border: '1px solid rgba(186, 32, 37, 0.5)',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '13px',
+              color: '#ccc'
+            }}>
+              Select a color to accent the pattern for <strong>{part.label}</strong> only
             </div>
           )}
 
           {/* Configuration Section Title - Only show for configurable parts */}
           {modalPartId !== 'triggerAssembly' && availableOptions.length > 0 && (
             <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'white' }}>
-              {finishMode === 'patterns' 
-                ? (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
-                : 'Available Colors'
+              {finishMode === 'colors' 
+                ? 'Available Colors'
+                : (showingOverride ? `Customize ${part.label}` : 'Select Pattern')
               }
             </div>
           )}
@@ -767,25 +792,33 @@ function LuxuryConfigModal() {
           flexShrink: 0,
           backgroundColor: '#1a1a1a'
         }}>
-          {/* Reset to Pattern button - only show for configurable parts with override */}
+          {/* Reset to Default button - always visible for all configurable parts */}
           {modalPartId !== 'triggerAssembly' && (
             <button 
-              onClick={handleResetToPattern}
-              disabled={!hasColorOverride}
+              onClick={() => {
+                const { reset } = useConfigStore.getState();
+                reset();
+                handleClose();
+              }}
               style={{
                 padding: '12px 24px',
                 backgroundColor: 'transparent',
-                border: `2px solid ${hasColorOverride ? '#BA2025' : '#555'}`,
-                color: hasColorOverride ? '#BA2025' : '#555',
+                border: '2px solid #BA2025',
+                color: '#BA2025',
                 borderRadius: '6px',
-                cursor: hasColorOverride ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
                 fontWeight: 'bold',
                 fontSize: '14px',
-                opacity: hasColorOverride ? 1 : 0.5,
                 transition: 'all 0.2s ease'
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(186, 32, 37, 0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
             >
-              Reset to Pattern
+              Reset to Default
             </button>
           )}
           
