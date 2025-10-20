@@ -119,6 +119,7 @@
     "boltRelease",
     "magRelease",
     "stockRodSpacer",
+    "triggerAssembly",
     "triggerGuard"
   ],
   "finishModes": {
@@ -282,11 +283,11 @@
     {
       "id": "408-cheytac",
       "label": ".408 CheyTac",
-      "description": "2,850 fps muzzle velocity | 7,600 ft-lbs muzzle energy | Effective range 2,300+ yards",
+      "description": "2,750 fps muzzle velocity | 7,050 ft-lbs muzzle energy | Effective range 2,300+ yards",
       "specifications": {
         "bulletWeight": "419 grain",
-        "muzzleVelocity": "2,850 fps",
-        "energy": "7,600 ft-lbs"
+        "muzzleVelocity": "2,750 fps",
+        "energy": "7,050 ft-lbs"
       },
       "barrelSpecs": {
         "length": "29.5 inches",
@@ -298,8 +299,8 @@
       },
       "ballisticInfo": {
         "note": "All velocity and energy information based on CheyTac Balanced Flight projectile (419 grain)",
-        "muzzleVelocity": "2,850 fps",
-        "muzzleEnergy": "7,600 ft-lbs"
+        "muzzleVelocity": "2,750 fps",
+        "muzzleEnergy": "7,050 ft-lbs"
       }
     }
   ],
@@ -307,13 +308,13 @@
     {
       "id": "m3-suppressor",
       "label": "M3 Suppressor",
-      "description": "CheyTac M3 Suppressor • 3D printed Haynes 282 nickel based super-alloy • Direct thread HUB mount • Six helical chambers with integrated brake • Dimensions: 8.42\" x 1.75\" • Weight: 19.8 oz (suppressor) + 3.2 oz (HUB) • Performance: 133 dB at ear, 25 dB reduction • Minimal POI shift • Muzzle brake included",
+      "description": "CheyTac M3 Suppressor\n\n• Material: 3D printed Haynes 282 nickel based super-alloy\n• Mount: Direct thread HUB adapter\n• Design: Six helical chambers with integrated brake\n• Dimensions: 8.42\" length × 1.75\" diameter\n• Weight: 19.8 oz (suppressor) + 3.2 oz (HUB adapter)\n• Performance: 133 dB at ear, 25 dB reduction\n• Minimal point-of-impact shift\n• Includes muzzle brake",
       "modelFile": "m200-m3-suppressor.glb"
     },
     {
       "id": "m2-suppressor",
       "label": "M2 Suppressor",
-      "description": "CheyTac M2 Suppressor • 3D printed Haynes 282 nickel based super-alloy • Direct thread HUB mount • Vented K baffle design • Six helical coaxial chambers with integrated flash hider • Dimensions: 8.37\" x 2\" • Weight: 24.6 oz (suppressor) + 3.2 oz (HUB) • Performance: 130.3 dB at ear, 25 dB reduction • Minimal POI shift • Muzzle brake included",
+      "description": "CheyTac M2 Suppressor\n\n• Material: 3D printed Haynes 282 nickel based super-alloy\n• Mount: Direct thread HUB adapter\n• Design: Vented K baffle, six helical coaxial chambers with integrated flash hider\n• Dimensions: 8.37\" length × 2\" diameter\n• Weight: 24.6 oz (suppressor) + 3.2 oz (HUB adapter)\n• Performance: 130.3 dB at ear, 25 dB reduction\n• Minimal point-of-impact shift\n• Includes muzzle brake",
       "modelFile": "m200-m2-suppressor.glb"
     },
     {
@@ -549,7 +550,7 @@
         "CT_1-020_Timney_Elite_Hunter_Remington_7__ws,_cone",
         "M200_Rifle_-_CT_1-020*",
         "M200_Rifle-CT_1-020*",
-        "*Trigger*",
+        "TRREM700-2_BLACK_OXIDESTEP",
         "*Timney*"
       ],
       "hasTriggerOptions": true

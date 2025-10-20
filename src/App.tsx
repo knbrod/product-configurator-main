@@ -43,17 +43,18 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modelLoading, setModelLoading] = useState(true);
-  const [itarCollapsed, setItarCollapsed] = useState(true); // Collapsed by default on mobile
-  const [showDisclaimer, setShowDisclaimer] = useState(false); // Show disclaimer after loading
-  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false); // Track if user acknowledged
+  const [itarCollapsed, setItarCollapsed] = useState(true);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [disclaimerAcknowledged, setDisclaimerAcknowledged] = useState(false);
   const [cameraPosition, setCameraPosition] = useState<[number, number, number]>([-7, 0.8, 0]);
-  const [showOrderModal, setShowOrderModal] = useState(false); // Order process modal
+  const [showOrderModal, setShowOrderModal] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [emailOptIn, setEmailOptIn] = useState(false); // Email opt-in state
+  const [emailOptIn, setEmailOptIn] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false); // Share modal
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Single-view export function
   const handleExport = async () => {
@@ -71,16 +72,13 @@ function App() {
     if (exportButton) exportButton.style.display = 'none';
 
     try {
-      // Wait a moment for UI to hide
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Ensure WebGL is finished rendering
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
       if (gl) {
         gl.finish();
       }
 
-      // Create export canvas
       const exportCanvas = document.createElement('canvas');
       const ctx = exportCanvas.getContext('2d');
       
@@ -88,14 +86,10 @@ function App() {
         exportCanvas.width = canvas.width;
         exportCanvas.height = canvas.height;
         
-        // White background
         ctx.fillStyle = 'rgba(255, 255, 255, 1)';
         ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-        
-        // Draw the 3D scene
         ctx.drawImage(canvas, 0, 0);
         
-        // Add logo overlay
         const logoImg = document.querySelector('img[alt="Company Logo"]') as HTMLImageElement;
         if (logoImg && logoImg.complete) {
           const logoScale = 0.8;
@@ -103,15 +97,11 @@ function App() {
           const logoHeight = logoImg.naturalHeight * logoScale;
           const padding = 40;
           
-          // Draw background behind logo
           ctx.fillStyle = 'rgba(255, 255, 255, 1)';
           ctx.fillRect(padding - 20, padding - 20, logoWidth + 40, logoHeight + 40);
-          
-          // Draw logo
           ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
         }
         
-        // Download image
         const timestamp = new Date().toISOString().split('T')[0];
         const link = document.createElement('a');
         link.download = `M200-Configuration-${timestamp}.png`;
@@ -125,7 +115,6 @@ function App() {
       console.error('Export failed:', error);
       showToast('Export failed. Please try again.', 'error');
     } finally {
-      // Restore UI elements
       if (itarNotice && originalItarDisplay !== undefined) {
         itarNotice.style.display = originalItarDisplay;
       }
@@ -142,14 +131,12 @@ function App() {
       return;
     }
 
-    // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(customerEmail)) {
       showToast('Please enter a valid email address', 'error');
       return;
     }
 
-    // Validate phone (basic validation - at least 10 digits)
     const phoneDigits = customerPhone.replace(/\D/g, '');
     if (phoneDigits.length < 10) {
       showToast('Please enter a valid phone number', 'error');
@@ -159,7 +146,6 @@ function App() {
     setIsSubmitting(true);
 
     try {
-      // Get configuration state from store
       const state = useConfigStore.getState();
       const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
       
@@ -167,7 +153,6 @@ function App() {
         throw new Error('No manifest loaded');
       }
 
-      // Helper function to get finish name by ID
       const getFinishName = (finishId: string, isPattern: boolean = false): string => {
         if (isPattern) {
           const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === finishId);
@@ -178,29 +163,23 @@ function App() {
         }
       };
 
-      // Helper function to get part finish
       const getPartFinish = (partId: string): string => {
-        // Check for color override first (when in pattern mode)
         if (finishMode === 'patterns' && partColorOverrides[partId]) {
           return getFinishName(partColorOverrides[partId], false);
         }
         
-        // If in pattern mode, return pattern name
         if (finishMode === 'patterns' && selectedPattern) {
           return getFinishName(selectedPattern, true);
         }
         
-        // Otherwise return color
         const colorId = selectedColors[partId];
         return colorId ? getFinishName(colorId, false) : 'Not specified';
       };
       
-      // Capture screenshot
       const canvas = document.querySelector('canvas');
       let screenshot = '';
       
       if (canvas) {
-        // Hide UI temporarily
         const itarNotice = document.querySelector('.itar-notice') as HTMLElement;
         const buttons = document.querySelectorAll('button');
         
@@ -220,7 +199,6 @@ function App() {
 
         screenshot = canvas.toDataURL('image/png');
 
-        // Restore UI
         if (itarNotice && originalDisplay !== undefined) {
           itarNotice.style.display = originalDisplay;
         }
@@ -231,9 +209,7 @@ function App() {
         });
       }
 
-      // Prepare configuration data with ALL selections
       const configData = {
-        // Part finishes
         receiver_finish: getPartFinish('receiver'),
         barrel_finish: getPartFinish('barrel'),
         stock_finish: getPartFinish('stock'),
@@ -243,42 +219,25 @@ function App() {
         bipod_finish: getPartFinish('bipodMonopod'),
         handguard_finish: getPartFinish('handguard'),
         muzzle_brake_finish: getPartFinish('muzzleBrake'),
-        
-        // Pattern/coating name
         pattern_name: finishMode === 'patterns' && selectedPattern 
           ? getFinishName(selectedPattern, true) 
           : 'Custom Individual Colors',
-        
-        // Hardware selections
         caliber: manifest.calibers?.find((c: any) => c.id === state.selectedCaliber)?.label || 'Not specified',
-        
-        // Muzzle device (suppressor or muzzle brake)
         muzzle_device: state.selectedSuppressor && state.selectedSuppressor !== 'none'
           ? manifest.suppressors?.find((s: any) => s.id === state.selectedSuppressor)?.label || 'Standard Muzzle Brake'
           : 'Standard Muzzle Brake',
-        
-        // Trigger (if triggers exist in manifest)
         trigger: (manifest as any).triggers?.find((t: any) => t.id === state.selectedTrigger)?.label || 'Standard Trigger',
-        
-        // Customer info
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
-        
-        // Email opt-in
         email_opt_in: emailOptIn,
-        
-        // Screenshot
         screenshot: screenshot,
-        
-        // Metadata
         configuration_date: new Date().toISOString(),
         finish_mode: finishMode
       };
 
       console.log('Sending configuration data:', configData);
 
-      // Send to WordPress endpoint
       const response = await fetch('https://cheytac.com/wp-json/configurator/v1/save', {
         method: 'POST',
         headers: {
@@ -292,7 +251,6 @@ function App() {
       if (result.success) {
         showToast('Configuration saved! Redirecting to product page...', 'success');
         
-        // Redirect to M200 product page with config_id
         setTimeout(() => {
           window.location.href = result.redirect_url;
         }, 1500);
@@ -307,12 +265,10 @@ function App() {
     }
   };
 
-  // Handle share configuration
   const handleShare = () => {
     setShowShareModal(true);
   };
 
-  // Generate shareable URL and message
   const getShareData = () => {
     const state = useConfigStore.getState();
     const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
@@ -321,7 +277,6 @@ function App() {
       return null;
     }
 
-    // Create a shareable URL with configuration data
     const configString = btoa(JSON.stringify({
       finishMode,
       selectedPattern,
@@ -331,7 +286,6 @@ function App() {
     
     const shareUrl = `${window.location.origin}${window.location.pathname}?config=${configString}`;
     
-    // Get pattern/color name for message
     let configDescription = 'custom';
     if (finishMode === 'patterns' && selectedPattern) {
       const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === selectedPattern);
@@ -348,7 +302,6 @@ function App() {
     };
   };
 
-  // Share to specific platform
   const shareToplatform = (platform: string) => {
     const shareData = getShareData();
     if (!shareData) {
@@ -409,27 +362,23 @@ function App() {
   useEffect(() => {
     loadProductManifest();
     
-    // Set responsive camera position and ITAR collapse state
     const handleResize = () => {
       const isMobile = window.innerWidth <= 768;
       
-      // Expand ITAR on desktop
       if (!isMobile) {
         setItarCollapsed(false);
       }
       
-      // Set camera position based on device - SIDE PROFILE VIEW
       if (isMobile) {
-        setCameraPosition([-8, 0.8, 0]); // Side view on mobile - further back
+        setCameraPosition([-8, 0.8, 0]);
       } else {
-        setCameraPosition([-7, 0.8, 0]); // Side view on desktop
+        setCameraPosition([-7, 0.8, 0]);
       }
     };
     
-    handleResize(); // Check initial size
+    handleResize();
     window.addEventListener('resize', handleResize);
     
-    // Load shared configuration from URL if present
     const loadSharedConfig = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const configParam = urlParams.get('config');
@@ -439,7 +388,6 @@ function App() {
           const configData = JSON.parse(atob(configParam));
           const store = useConfigStore.getState();
           
-          // Apply the shared configuration
           if (configData.finishMode) {
             store.setFinishMode(configData.finishMode);
           }
@@ -458,8 +406,6 @@ function App() {
           }
           
           showToast('Loaded shared configuration!', 'success');
-          
-          // Clean URL without reloading
           window.history.replaceState({}, '', window.location.pathname);
         } catch (error) {
           console.error('Failed to load shared configuration:', error);
@@ -467,11 +413,17 @@ function App() {
       }
     };
     
-    // Load shared config after a short delay to ensure manifest is loaded
     setTimeout(loadSharedConfig, 1000);
     
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Show tutorial after disclaimer is acknowledged - EVERY TIME
+  useEffect(() => {
+    if (!modelLoading && disclaimerAcknowledged) {
+      setTimeout(() => setShowTutorial(true), 500);
+    }
+  }, [modelLoading, disclaimerAcknowledged]);
 
   const loadProductManifest = async () => {
     try {
@@ -532,7 +484,6 @@ function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(to bottom right, #efddddd3, #000000)' }}>
-      {/* 3D Model Loading Overlay - Render FIRST */}
       {modelLoading && (
         <div style={{
           position: 'fixed',
@@ -608,25 +559,19 @@ function App() {
           productPath={PRODUCT_PATH}
           onLoadComplete={() => {
             setModelLoading(false);
-            // Only show disclaimer if user hasn't acknowledged it yet
             if (!disclaimerAcknowledged) {
               setShowDisclaimer(true);
             }
           }}
         />
         <LuxuryConfigurator />
-        
-        {/* Model Preloader - Preloads all suppressor models for instant switching */}
         <ModelPreloader />
-        
-        {/* Part Click Handler - Click directly on 3D parts to configure */}
         <PartClickHandler />
       </Canvas>
       
       <LuxuryConfigModal />
       <UIControls />
       
-      {/* Company Logo */}
       <div style={{
         position: 'absolute',
         top: '20px',
@@ -642,7 +587,6 @@ function App() {
         />
       </div>
       
-      {/* Export, Share, and Order Buttons */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
@@ -721,7 +665,6 @@ function App() {
         </button>
       </div>
       
-      {/* ITAR Notice - Collapsible on Mobile */}
       <div 
         className="itar-notice"
         style={{
@@ -745,7 +688,6 @@ function App() {
         onClick={() => setItarCollapsed(!itarCollapsed)}
       >
         {itarCollapsed ? (
-          // Collapsed view - just icon and short text
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -757,7 +699,6 @@ function App() {
             <span style={{ fontSize: '10px', opacity: 0.8 }}>▶</span>
           </div>
         ) : (
-          // Expanded view - full notice
           <>
             <div style={{ 
               fontWeight: 'bold', 
@@ -779,13 +720,10 @@ function App() {
       </div>
       </div>
 
-      {/* Visualization Disclaimer Modal */}
       {showDisclaimer && (
         <div 
           onClick={(e) => {
-            console.log('Background clicked');
             if (e.target === e.currentTarget) {
-              console.log('Closing from background click');
               setShowDisclaimer(false);
               setDisclaimerAcknowledged(true);
             }
@@ -890,14 +828,12 @@ function App() {
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Button MOUSEDOWN - closing modal');
                 setShowDisclaimer(false);
                 setDisclaimerAcknowledged(true);
               }}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Button CLICK');
               }}
               type="button"
               style={{
@@ -920,7 +856,267 @@ function App() {
         </div>
       )}
 
-      {/* Order Process Modal */}
+      {/* Tutorial Overlay - Shows Every Visit */}
+      {showTutorial && (
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowTutorial(false);
+            }
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.92)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '20px',
+            animation: 'fadeIn 0.3s ease-in',
+            cursor: 'pointer'
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+              borderRadius: '12px',
+              padding: '40px',
+              maxWidth: '600px',
+              width: '100%',
+              border: '2px solid #ba2025',
+              boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+              animation: 'slideUp 0.4s ease-out',
+              cursor: 'default'
+            }}
+          >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '30px'
+            }}>
+              <img 
+                src="/logo.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: '60px', 
+                  width: 'auto',
+                  marginBottom: '20px'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: '28px',
+                fontWeight: '700',
+                marginBottom: '10px',
+                letterSpacing: '1px',
+                fontFamily: 'Inter, system-ui, sans-serif'
+              }}>
+                HOW TO CONFIGURE
+              </h2>
+              <p style={{
+                color: '#999',
+                fontSize: '14px',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                fontFamily: 'Inter, system-ui, sans-serif'
+              }}>
+                Your M200 Intervention
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '30px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                marginBottom: '25px',
+                padding: '20px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                borderLeft: '3px solid #BA2025'
+              }}>
+                <div style={{
+                  background: '#BA2025',
+                  color: 'white',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  flexShrink: 0,
+                  marginRight: '20px',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}>
+                  1
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    letterSpacing: '0.5px',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    🖱️ ROTATE THE MODEL
+                  </div>
+                  <div style={{
+                    color: '#ccc',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    Click and drag anywhere on the rifle to rotate and view from different angles
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                marginBottom: '25px',
+                padding: '20px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                borderLeft: '3px solid #BA2025'
+              }}>
+                <div style={{
+                  background: '#BA2025',
+                  color: 'white',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  flexShrink: 0,
+                  marginRight: '20px',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}>
+                  2
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    letterSpacing: '0.5px',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    👆 CLICK ON PARTS
+                  </div>
+                  <div style={{
+                    color: '#ccc',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    Click directly on any rifle part (barrel, stock, receiver, etc.) to customize your M200 Intervention with parts or colors!
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                padding: '20px',
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                borderLeft: '3px solid #BA2025'
+              }}>
+                <div style={{
+                  background: '#BA2025',
+                  color: 'white',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  flexShrink: 0,
+                  marginRight: '20px',
+                  fontFamily: 'Inter, system-ui, sans-serif'
+                }}>
+                  3
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    color: 'white',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    letterSpacing: '0.5px',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    🎨 CHOOSE YOUR FINISH
+                  </div>
+                  <div style={{
+                    color: '#ccc',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    fontFamily: 'Inter, system-ui, sans-serif'
+                  }}>
+                    Select from premium patterns (Multicam, Kryptek) or individual colors. Mix and match for a truly custom build
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowTutorial(false);
+              }}
+              style={{
+                width: '100%',
+                background: '#BA2025',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '16px 24px',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                letterSpacing: '1px',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.background = '#9a1a1f'}
+              onMouseOut={(e) => e.currentTarget.style.background = '#BA2025'}
+            >
+              GOT IT — LET'S BUILD
+            </button>
+
+            <div 
+              onClick={() => {
+                setShowTutorial(false);
+              }}
+              style={{
+                textAlign: 'center',
+                marginTop: '15px',
+                color: '#666',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontFamily: 'Inter, system-ui, sans-serif'
+              }}
+            >
+              Skip for now
+            </div>
+          </div>
+        </div>
+      )}
+
       {showOrderModal && (
         <div 
           onClick={(e) => {
@@ -1085,7 +1281,6 @@ function App() {
               />
             </div>
 
-            {/* EMAIL OPT-IN CHECKBOX */}
             <div style={{
               margin: '30px 0 20px 0',
               padding: '20px',
@@ -1138,7 +1333,6 @@ function App() {
               </p>
             </div>
 
-            {/* BUTTONS */}
             <div style={{
               display: 'flex',
               gap: '12px'
@@ -1194,7 +1388,6 @@ function App() {
         </div>
       )}
 
-      {/* Share Modal */}
       {showShareModal && (
         <div 
           onClick={(e) => {
@@ -1260,7 +1453,6 @@ function App() {
               </p>
             </div>
 
-            {/* Social Media Buttons Grid */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -1424,7 +1616,6 @@ function App() {
               </button>
             </div>
 
-            {/* Copy Link Button */}
             <button
               onClick={() => shareToplatform('copy')}
               style={{
@@ -1449,7 +1640,6 @@ function App() {
               Copy Link to Clipboard
             </button>
 
-            {/* Native Share (if available) */}
             {navigator.share && (
               <button
                 onClick={() => shareToplatform('native')}
@@ -1480,7 +1670,6 @@ function App() {
               </button>
             )}
 
-            {/* Close Button */}
             <button
               onClick={() => setShowShareModal(false)}
               style={{
@@ -1502,7 +1691,6 @@ function App() {
         </div>
       )}
 
-      {/* CSS for animations and toasts */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
@@ -1577,7 +1765,6 @@ function App() {
           }
         }
         
-        /* Mobile responsive fix - prevents ITAR notice and buttons overlap */
         @media (max-width: 768px) {
           .itar-notice {
             bottom: 190px !important;
@@ -1587,14 +1774,12 @@ function App() {
           }
         }
         
-        /* Desktop - always show expanded */
         @media (min-width: 769px) {
           .itar-notice {
             max-width: 280px !important;
           }
         }
         
-        /* Mobile styles for disclaimer modal */
         @media (max-width: 600px) {
           .disclaimer-modal-content {
             padding: 30px 20px !important;

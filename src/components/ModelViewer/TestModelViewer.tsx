@@ -1,9 +1,9 @@
 // src/components/ModelViewer/TestModelViewer.tsx
-import { useRef, useEffect, Suspense, useMemo } from 'react';
+import { useRef, useEffect, Suspense, useMemo, useState, useCallback } from 'react';
 import { useGLTF, OrbitControls, Environment, ContactShadows, Center, useTexture } from '@react-three/drei';
 import { useConfigStore } from '../../state/useConfigStore';
 import * as THREE from 'three';
-import { useThree } from '@react-three/fiber';
+import { useThree, ThreeEvent } from '@react-three/fiber';
 
 // ================================================================
 // FLEXIBLE MESH MATCHING UTILITIES
@@ -84,6 +84,28 @@ function findPartForMesh(
   return null;
 }
 
+/**
+ * Checks if a mesh should be excluded from color/pattern changes
+ * based on the part's excludeFromColor array
+ */
+function isExcludedFromColor(
+  meshName: string,
+  partId: string,
+  manifest: any
+): boolean {
+  const part = manifest.parts?.find((p: any) => p.id === partId);
+  if (!part?.excludeFromColor) return false;
+
+  // Check if this mesh matches any of the exclusion patterns
+  for (const exclusion of part.excludeFromColor) {
+    if (meshMatchesSelector(meshName, exclusion)) {
+      console.log(`🚫 Mesh "${meshName}" excluded from color by part "${partId}"`);
+      return true;
+    }
+  }
+  return false;
+}
+
 // ================================================================
 // FIXED BLACK PARTS
 // ================================================================
@@ -101,8 +123,7 @@ const FIXED_BLACK_PARTS = [
   "CT_1-003_Rail_Screw_91251A194",
   "CT_1-003_Rail_Screw_91251A195",
   
-  // Stock lock components
-  "CT_1-004_Stock_Lock_Rev_4",
+  // Stock lock springs (NOT the lock itself - that should change color now)
   "CT_1-005_Stock_Lock_Spring_1986K616",
   "CT_1-005_Stock_Lock_Spring_1986K617",
   "CT_1-007_Cover_Plate_Screw_91251A191",
@@ -123,8 +144,7 @@ const FIXED_BLACK_PARTS = [
   "CT_1-014_Handle_Mount_Screw_91251A542",
   "CT_1-014_Handle_Mount_Screw_91251A543",
   
-  // Bolt release components
-  "CT_1-015_Bolt_Release",
+  // Bolt release screws (NOT the release itself - that should change color now)
   "CT_1-016_Bolt_Release_Screw_91259A465",
   "CT_1-017_Bolt_Release_Detent_90145A507",
   "CT_1-018_Bolt_Release_Spring_1986K55",
@@ -136,7 +156,7 @@ const FIXED_BLACK_PARTS = [
   "CT_1-023_Trigger_Guard_Screw_91274A064",
   "CT_1-023_Trigger_Guard_Screw_91274A065",
   "CT_1-023_Trigger_Guard_Screw_91274A066",
-  "CT_1-024_Mag_Release",
+  // CT_1-024_Mag_Release - REMOVED, should change color now
   "CT_1-025_Mag_Release_Spring_9435K34",
   "CT_1-026_Mag_Release_Roll_Pin_92373A185",
   "CT_1-028_Pistol_Grip_Screw_91251A540",
@@ -167,7 +187,7 @@ const FIXED_BLACK_PARTS = [
   // Barrel components
   "CT_3-005_Barrel_Alignment_Pin_90145A501",
   
-  // Stock components
+  // Stock components (NOT CT_4-016_Stock_Rod_Spacer - that should change color now)
   "CT_4-002_Recoil_Pad_Screw_91251A342",
   "CT_4-002_Recoil_Pad_Screw_91251A343",
   "CT_4-004L_Stock_Rod_Left",
@@ -182,7 +202,6 @@ const FIXED_BLACK_PARTS = [
   "CT_4-013_Monopod_Screw_91251A541",
   "CT_4-014_Monopod_Spring_1986K59",
   "CT_4-015_Monopod_Retainer_Screw_91255A194",
-  "CT_4-016_Stock_Rod_Spacer",
   
   // Hand guard clamp
   "CT_5-003_Handguard_Clamp_Screw_91251A540",
@@ -240,8 +259,7 @@ const FIXED_BLACK_PARTS = [
   "HOREM700RH-2STEP",
   "KNREM700BSALOSTEP",
   "KNREM700BSASHSTEP",
-  "SAREM700BBLSTEP",
-  "TRREM700-2_BLACK_OXIDESTEP"
+  "SAREM700BBLSTEP"
 ];
 
 // Texture cache to avoid reloading
@@ -323,6 +341,10 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
   const modelRef = useRef<THREE.Group>(null);
   const modelUrl = `${productPath}/products/example-product/${modelFile}`;
   
+  // State for highlighting
+  const [hoveredMesh, setHoveredMesh] = useState<THREE.Mesh | null>(null);
+  const [selectedMesh, setSelectedMesh] = useState<THREE.Mesh | null>(null);
+  
   console.log('🔫 Loading model from:', modelUrl);
   
   const { scene } = useGLTF(modelUrl);
@@ -332,7 +354,8 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
     selectedColors,
     partColorOverrides,
     getSelectedMaterials,
-    manifest 
+    manifest,
+    modalPartId 
   } = useConfigStore();
   
   console.log('RifleModel: Loaded GLB successfully');
@@ -355,6 +378,82 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
     return clonedScene;
   }, [scene, modelFile, onLoadComplete]);
 
+  // Handle pointer move for hover effect - TRIGGER NOW SELECTABLE
+  const handlePointerMove = useCallback((event: ThreeEvent<PointerEvent>) => {
+    event.stopPropagation();
+    
+    if (event.object instanceof THREE.Mesh && manifest) {
+      const partId = findPartForMesh(
+        event.object.name,
+        manifest.configurableParts || [],
+        manifest
+      );
+      
+      // Trigger is now selectable! Removed the exclusion
+      if (partId) {
+        setHoveredMesh(event.object);
+        document.body.style.cursor = 'pointer';
+      } else {
+        setHoveredMesh(null);
+        document.body.style.cursor = 'default';
+      }
+    }
+  }, [manifest]);
+
+  // Handle pointer leave
+  const handlePointerLeave = useCallback(() => {
+    setHoveredMesh(null);
+    document.body.style.cursor = 'default';
+  }, []);
+
+  // Handle click for selection - TRIGGER NOW SELECTABLE
+  const handleClick = useCallback((event: ThreeEvent<MouseEvent>) => {
+    event.stopPropagation();
+    
+    if (event.object instanceof THREE.Mesh && manifest) {
+      const partId = findPartForMesh(
+        event.object.name,
+        manifest.configurableParts || [],
+        manifest
+      );
+      
+      // Trigger is now selectable! Removed the exclusion
+      if (partId) {
+        // If clicking the same part again, deselect it
+        if (selectedMesh) {
+          const currentPartId = findPartForMesh(
+            selectedMesh.name,
+            manifest.configurableParts || [],
+            manifest
+          );
+          if (currentPartId === partId) {
+            setSelectedMesh(null);
+            console.log('🎯 Deselected part:', partId);
+            return;
+          }
+        }
+        
+        setSelectedMesh(event.object);
+        console.log('🎯 Selected mesh:', event.object.name, '→ Part:', partId);
+      } else {
+        // Clicked on non-selectable part, clear selection
+        setSelectedMesh(null);
+      }
+    } else {
+      // Clicked on empty space, clear selection
+      setSelectedMesh(null);
+    }
+  }, [manifest, selectedMesh]);
+
+  // Clear selection when modal closes
+  useEffect(() => {
+    console.log('Modal state changed, modalPartId:', modalPartId);
+    if (!modalPartId) {
+      console.log('Modal closed, clearing selectedMesh');
+      setSelectedMesh(null);
+    }
+  }, [modalPartId]);
+
   // Apply materials when selections change - NOW WITH FLEXIBLE MATCHING
   useEffect(() => {
     if (modelRef.current && manifest) {
@@ -364,6 +463,19 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
       
       const matchedParts = new Set<string>();
       const unmatchedMeshes: string[] = [];
+      
+      // Calculate which part IDs are hovered/selected for group highlighting
+      const hoveredPartId = hoveredMesh && manifest ? findPartForMesh(
+        hoveredMesh.name,
+        manifest.configurableParts || [],
+        manifest
+      ) : null;
+
+      const selectedPartId = selectedMesh && manifest ? findPartForMesh(
+        selectedMesh.name,
+        manifest.configurableParts || [],
+        manifest
+      ) : null;
       
       modelRef.current.traverse((child) => {
         if (child instanceof THREE.Mesh) {
@@ -393,6 +505,16 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
             );
 
             if (partId) {
+              // 🔥 NEW: Check if this specific mesh is excluded from color changes
+              if (isExcludedFromColor(child.name, partId, manifest)) {
+                child.material = new THREE.MeshStandardMaterial({
+                  color: "#1a1a1a",
+                  metalness: 0.2,
+                  roughness: 0.8,
+                });
+                return;
+              }
+
               matchedParts.add(partId);
               shouldApplyMaterial = true;
               console.log(`✓ Matched mesh "${child.name}" to part "${partId}"`);
@@ -468,6 +590,39 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
               child.material = materialToApply;
             }
             
+            // Apply red glow if this mesh belongs to the same part as hovered or selected mesh
+            const partId = findPartForMesh(
+              child.name,
+              manifest.configurableParts || [],
+              manifest
+            );
+            
+            const shouldHighlight = (hoveredPartId && partId === hoveredPartId) || 
+                                    (selectedPartId && partId === selectedPartId);
+
+            if (shouldHighlight) {
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => {
+                  mat.emissive = new THREE.Color(0xBA2025); // CheyTac red
+                  mat.emissiveIntensity = 0.4;
+                });
+              } else {
+                child.material.emissive = new THREE.Color(0xBA2025); // CheyTac red
+                child.material.emissiveIntensity = 0.4;
+              }
+            } else {
+              // Clear any existing emissive
+              if (Array.isArray(child.material)) {
+                child.material.forEach(mat => {
+                  mat.emissive = new THREE.Color(0x000000);
+                  mat.emissiveIntensity = 0;
+                });
+              } else {
+                child.material.emissive = new THREE.Color(0x000000);
+                child.material.emissiveIntensity = 0;
+              }
+            }
+            
             // Force the material to update
             child.material.needsUpdate = true;
             
@@ -499,11 +654,17 @@ function RifleModel({ productPath, modelFile, onLoadComplete }: { productPath: s
       }
       console.log('=== Material Application Complete ===');
     }
-  }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene]);
+  }, [finishMode, selectedPattern, selectedColors, partColorOverrides, manifest, stableScene, hoveredMesh, selectedMesh]);
 
   return (
     <Center>
-      <group ref={modelRef} scale={0.01}>
+      <group 
+        ref={modelRef} 
+        scale={0.01}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onClick={handleClick}
+      >
         <primitive object={stableScene} />
       </group>
     </Center>
@@ -525,9 +686,16 @@ function CameraSetup({ distance }: { distance: number }) {
   const { camera } = useThree();
   
   useEffect(() => {
-    camera.position.set(0, 0, distance);
+    // Side profile view - positioned to the right side with better elevation
+    camera.position.set(distance, distance * 0.3, distance * 0.2);
+    camera.lookAt(0, 0.2, 0);  // Look slightly above center for better framing
+    
+    // Adjust near clipping plane to prevent seeing through model when zoomed in
+    camera.near = 1.5;  // Increased from 0.5 to 1.5 to prevent more clipping
+    camera.far = 2000;
+    
     camera.updateProjectionMatrix();
-    console.log('CameraSetup: Set initial camera distance to:', distance);
+    console.log('CameraSetup: Set initial camera to side profile view with adjusted clipping');
   }, [camera, distance]);
   
   return null;
@@ -547,13 +715,13 @@ export function TestModelViewer({ productPath, onLoadComplete }: { productPath: 
   const cameraDistances = useMemo(() => {
     if (isMobile) {
       return {
-        min: 14,  // Zoom out more on mobile
+        min: 10,   // Increased to prevent clipping
         max: 25,
-        default: 18 // Start further back on mobile
+        default: 18
       };
     }
     return {
-      min: 9,
+      min: 7,    // Increased to prevent clipping on desktop
       max: 15,
       default: 12
     };

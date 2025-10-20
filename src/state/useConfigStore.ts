@@ -731,21 +731,39 @@ export const useConfigStore = create<ConfigState>()(
         get().selectOption(partId, optionId);
       },
       
-      // Modal actions (NEW)
-      setModalOpen: (open: boolean) => set({ modalOpen: open }),
-      
-      setModalPartId: (partId: string | null) => set({ modalPartId: partId }),
-      
-      focusCameraOnPart: (partId: string) => {
-        console.log('Focusing camera on part:', partId);
-        get().setCameraPreset('detail');
-      },
-      
-      getPartUIGroup: (partId: string) => {
-        const { manifest } = get();
-        if (!manifest) return null;
-        return manifest.ui?.find(group => group.partIds.includes(partId));
-      },
+   // Modal actions (NEW)
+setModalOpen: (open: boolean) => {
+  console.log('🔴 setModalOpen called with:', open);
+  if (!open) {
+    // When closing modal, also clear the part ID
+    console.log('🔴 Modal closing, clearing modalPartId');
+    set({ modalOpen: false, modalPartId: null });
+  } else {
+    set({ modalOpen: open });
+  }
+},
+
+setModalPartId: (partId: string | null) => {
+  console.log('🔴 setModalPartId called with:', partId);
+  if (partId === null) {
+    // When clearing part ID, also close modal
+    set({ modalPartId: null, modalOpen: false });
+  } else {
+    // When setting a part ID, open the modal
+    set({ modalPartId: partId, modalOpen: true });
+  }
+},
+
+focusCameraOnPart: (partId: string) => {
+  console.log('Focusing camera on part:', partId);
+  get().setCameraPreset('detail');
+},
+
+getPartUIGroup: (partId: string) => {
+  const { manifest } = get();
+  if (!manifest) return null;
+  return manifest.ui?.find(group => group.partIds.includes(partId));
+}
     }),
     {
       name: 'product-configurator-storage',
