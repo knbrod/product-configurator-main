@@ -194,11 +194,13 @@
             "textureUrl": "/textures/highlander.jpg",
             "metalness": 0.2,
             "roughness": 0.9,
-            "repeat": {
-              "barrel": [4, 1],
-              "muzzleBrake": [20, 10],
-              "handGuard": [3, 1],
-              "default": [2, 1]
+          "repeat": {
+              "barrel": [0.25, 0.25],
+              "muzzleBrake": [0.5, 0.5],
+              "handGuard": [0.25, 0.25],
+              "buttstock": [0.25, 0.25],
+              "receiver": [0.25, 0.25],
+              "default": [0.25, 0.25]
             }
           }
         },
@@ -209,13 +211,15 @@
           "material": {
             "type": "texture",
             "textureUrl": "/textures/nomad.jpg",
-            "metalness": 0.2,
+                 "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [4, 1],
-              "muzzleBrake": [20, 10],
-              "handGuard": [3, 1],
-              "default": [2, 1]
+              "barrel": [0.25, 0.25],
+              "muzzleBrake": [0.5, 0.5],
+              "handGuard": [0.25, 0.25],
+              "buttstock": [0.25, 0.25],
+              "receiver": [0.25, 0.25],
+              "default": [0.25, 0.25]
             }
           }
         },
@@ -229,10 +233,12 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [4, 1],
-              "muzzleBrake": [20, 10],
-              "handGuard": [3, 1],
-              "default": [2, 1]
+              "barrel": [0.25, 0.25],
+              "muzzleBrake": [0.5, 0.5],
+              "handGuard": [0.25, 0.25],
+              "buttstock": [0.25, 0.25],
+              "receiver": [0.25, 0.25],
+              "default": [0.25, 0.25]
             }
           }
         },
@@ -246,10 +252,12 @@
             "metalness": 0.2,
             "roughness": 0.9,
             "repeat": {
-              "barrel": [4, 1],
-              "muzzleBrake": [20, 10],
-              "handGuard": [3, 1],
-              "default": [2, 1]
+              "barrel": [1.0, 1.0],
+              "muzzleBrake": [1.0, 1.0],
+              "handGuard":  [0.45, 0.45],
+              "buttstock": [0.45, 0.45],
+              "receiver":  [0.45, 0.45],
+              "default": [1.0, 1.0]
             }
           }
         }
@@ -308,19 +316,19 @@
     {
       "id": "m3-suppressor",
       "label": "M3 Suppressor",
-      "description": "CheyTac M3 Suppressor\n\n• Material: 3D printed Haynes 282 nickel based super-alloy\n• Mount: Direct thread HUB adapter\n• Design: Six helical chambers with integrated brake\n• Dimensions: 8.42\" length × 1.75\" diameter\n• Weight: 19.8 oz (suppressor) + 3.2 oz (HUB adapter)\n• Performance: 133 dB at ear, 25 dB reduction\n• Minimal point-of-impact shift\n• Includes muzzle brake",
+      "description": "CheyTac M3 Suppressor\n\n• Haynes 282 super-alloy • HUB mount • Six helical chambers • 8.1\" × 1.75\" • 23 oz total • Includes muzzle brake",
       "modelFile": "m200-m3-suppressor.glb"
     },
     {
       "id": "m2-suppressor",
       "label": "M2 Suppressor",
-      "description": "CheyTac M2 Suppressor\n\n• Material: 3D printed Haynes 282 nickel based super-alloy\n• Mount: Direct thread HUB adapter\n• Design: Vented K baffle, six helical coaxial chambers with integrated flash hider\n• Dimensions: 8.37\" length × 2\" diameter\n• Weight: 24.6 oz (suppressor) + 3.2 oz (HUB adapter)\n• Performance: 130.3 dB at ear, 25 dB reduction\n• Minimal point-of-impact shift\n• Includes muzzle brake",
+      "description": "CheyTac M2 Suppressor\n\n• Haynes 282 super-alloy • HUB mount • K baffle chambers with flash hider • 8.37\" × 2\" • 27.8 oz total • Includes muzzle brake",
       "modelFile": "m200-m2-suppressor.glb"
     },
     {
       "id": "no-suppressor",
       "label": "Muzzle Brake Only",
-      "description": "Standard muzzle brake configuration without suppressor",
+      "description": "Standard muzzle brake configuration without suppressor", 
       "modelFile": "m200-no-suppressor.glb"
     }
   ],
@@ -551,6 +559,7 @@
         "M200_Rifle_-_CT_1-020*",
         "M200_Rifle-CT_1-020*",
         "TRREM700-2_BLACK_OXIDESTEP",
+        
         "*Timney*"
       ],
       "hasTriggerOptions": true

@@ -37,72 +37,6 @@ function showToast(message: string, type: 'success' | 'error' = 'success') {
   }, 3000);
 }
 
-/**
- * Maps configurator color/pattern labels to website display names
- * Handles both full rifle colors and patterns, detecting custom configurations
- */
-const mapFinishToWebsite = (
-  finishLabel: string, 
-  finishMode: string,
-  hasCustomParts: boolean
-): string => {
-  // If there are ANY custom part colors configured, return "Other"
-  if (hasCustomParts) {
-    return 'Other – Submit example for pricing';
-  }
-
-  // Normalize the input
-  const normalized = finishLabel.toLowerCase().trim();
-
-  // Map solid Cerakote colors (when using Colors menu)
-  const colorMappings: Record<string, string> = {
-    'cerakote® absolute black': 'Black',
-    'cerakote absolute black': 'Black',
-    'cerakote® armor black': 'Black',
-    'cerakote armor black': 'Black',
-    
-    'cerakote® flat dark earth': 'F.D.E.',
-    'cerakote flat dark earth': 'F.D.E.',
-    'cerakote® fde': 'F.D.E.',
-    'cerakote fde': 'F.D.E.',
-    
-    'cerakote® od green': 'OD Green',
-    'cerakote od green': 'OD Green',
-    'cerakote® o.d. green': 'OD Green',
-    'cerakote o.d. green': 'OD Green',
-    
-    'cerakote® tungsten': 'Tungsten',
-    'cerakote tungsten': 'Tungsten',
-    
-    'cerakote® vortex bronze': 'Vortex Bronze',
-    'cerakote vortex bronze': 'Vortex Bronze',
-  };
-
-  // Map patterns (these keep their names)
-  const patternMappings: Record<string, string> = {
-    'kryptek® raid': 'Kryptek® Raid',
-    'kryptek raid': 'Kryptek® Raid',
-    'kryptek® highlander': 'Kryptek® Highlander',
-    'kryptek highlander': 'Kryptek® Highlander',
-    'kryptek® nomad': 'Kryptek® Nomad',
-    'kryptek nomad': 'Kryptek® Nomad',
-    'multicam': 'Multicam',
-  };
-
-  // Check color mappings first
-  if (colorMappings[normalized]) {
-    return colorMappings[normalized];
-  }
-
-  // Check pattern mappings
-  if (patternMappings[normalized]) {
-    return patternMappings[normalized];
-  }
-
-  // If no mapping found, return "Other"
-  return 'Other – Submit example for pricing';
-};
-
 function App() {
   console.log('App: Component rendering');
   const { loadManifest } = useConfigStore();
@@ -219,7 +153,6 @@ function App() {
         throw new Error('No manifest loaded');
       }
 
-      // Helper function to get finish name by ID
       const getFinishName = (finishId: string, isPattern: boolean = false): string => {
         if (isPattern) {
           const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === finishId);
@@ -230,44 +163,19 @@ function App() {
         }
       };
 
-      // Helper function to get part finish
       const getPartFinish = (partId: string): string => {
-        // Check for color override first (when in pattern mode with individual part changes)
         if (finishMode === 'patterns' && partColorOverrides[partId]) {
           return getFinishName(partColorOverrides[partId], false);
         }
         
-        // If in pattern mode without override, return pattern name
         if (finishMode === 'patterns' && selectedPattern) {
           return getFinishName(selectedPattern, true);
         }
         
-        // Otherwise return color from colors mode
         const colorId = selectedColors[partId];
         return colorId ? getFinishName(colorId, false) : 'Not specified';
       };
-
-      // Determine if there are custom part colors
-      const hasCustomPartColors = (() => {
-        // If in colors mode, check if all parts have the same color
-        if (finishMode === 'colors') {
-          const configurableParts = manifest.configurableParts || [];
-          const colors = configurableParts.map(partId => selectedColors[partId]).filter(Boolean);
-          const uniqueColors = new Set(colors);
-          
-          // If more than one unique color, it's custom
-          return uniqueColors.size > 1;
-        }
-        
-        // If in patterns mode, check if there are any color overrides
-        if (finishMode === 'patterns') {
-          return Object.keys(partColorOverrides).length > 0;
-        }
-        
-        return false;
-      })();
-
-      // Capture screenshot
+      
       const canvas = document.querySelector('canvas');
       let screenshot = '';
       
@@ -301,33 +209,7 @@ function App() {
         });
       }
 
-      // Get the main finish name for mapping
-      let mainFinish = '';
-      if (finishMode === 'patterns' && selectedPattern) {
-        mainFinish = getFinishName(selectedPattern, true);
-      } else if (finishMode === 'colors') {
-        // Get the first color as representative
-        const firstPartId = (manifest.configurableParts || [])[0];
-        if (firstPartId) {
-          mainFinish = getPartFinish(firstPartId);
-        }
-      }
-
-      // Apply the mapping to get website-formatted finish name
-      const mappedFinish = mapFinishToWebsite(mainFinish, finishMode, hasCustomPartColors);
-
-      console.log('Configuration Summary:');
-      console.log('  Finish Mode:', finishMode);
-      console.log('  Main Finish:', mainFinish);
-      console.log('  Has Custom Parts:', hasCustomPartColors);
-      console.log('  Mapped Finish:', mappedFinish);
-
-      // Prepare configuration data
       const configData = {
-        // Main mapped finish for website
-        finish: mappedFinish,
-        
-        // Individual part finishes (for your records)
         receiver_finish: getPartFinish('receiver'),
         barrel_finish: getPartFinish('barrel'),
         stock_finish: getPartFinish('stock'),
@@ -337,35 +219,24 @@ function App() {
         bipod_finish: getPartFinish('bipodMonopod'),
         handguard_finish: getPartFinish('handguard'),
         muzzle_brake_finish: getPartFinish('muzzleBrake'),
-        
-        // Pattern/coating name (original from configurator)
         pattern_name: finishMode === 'patterns' && selectedPattern 
           ? getFinishName(selectedPattern, true) 
           : 'Custom Individual Colors',
-        
-        // Hardware selections
         caliber: manifest.calibers?.find((c: any) => c.id === state.selectedCaliber)?.label || 'Not specified',
         muzzle_device: state.selectedSuppressor && state.selectedSuppressor !== 'none'
           ? manifest.suppressors?.find((s: any) => s.id === state.selectedSuppressor)?.label || 'Standard Muzzle Brake'
           : 'Standard Muzzle Brake',
         trigger: (manifest as any).triggers?.find((t: any) => t.id === state.selectedTrigger)?.label || 'Standard Trigger',
-        
-        // Customer info
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
         email_opt_in: emailOptIn,
-        
-        // Screenshot
         screenshot: screenshot,
-        
-        // Metadata
         configuration_date: new Date().toISOString(),
-        finish_mode: finishMode,
-        has_custom_parts: hasCustomPartColors
+        finish_mode: finishMode
       };
 
-      console.log('Sending configuration data to WordPress:', configData);
+      console.log('Sending configuration data:', configData);
 
       const response = await fetch('https://cheytac.com/wp-json/configurator/v1/save', {
         method: 'POST',

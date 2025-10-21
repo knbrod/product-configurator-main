@@ -279,44 +279,60 @@ function createMaterialFromDefinition(materialDef: any, partId?: string): THREE.
       roughness: materialDef.roughness ?? 0.8,
     });
     
-    // Check cache first
-    let texture = textureCache.get(materialDef.textureUrl);
+    // Check cache first - but use a unique key per part to allow different repeat values
+    const cacheKey = `${materialDef.textureUrl}_${partId}`;
+    let texture = textureCache.get(cacheKey);
     
     if (!texture) {
-      // Load new texture
-      texture = textureLoader.load(
-        materialDef.textureUrl, 
-        (loadedTexture) => {
-          console.log('✅ Texture loaded successfully:', materialDef.textureUrl);
-          loadedTexture.wrapS = THREE.RepeatWrapping;
-          loadedTexture.wrapT = THREE.RepeatWrapping;
-          loadedTexture.colorSpace = THREE.SRGBColorSpace;
-          loadedTexture.needsUpdate = true;
-          
-          // Update material with loaded texture
-          material.map = loadedTexture;
-          material.needsUpdate = true;
-        },
-        undefined,
-        (error) => {
-          console.error('❌ Error loading texture:', materialDef.textureUrl, error);
-        }
-      );
+      // Check if we have the base texture cached
+      const baseTexture = textureCache.get(materialDef.textureUrl);
       
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.colorSpace = THREE.SRGBColorSpace;
+      if (baseTexture) {
+        // Clone the base texture so we can set different repeat values
+        texture = baseTexture.clone();
+        texture.needsUpdate = true;
+      } else {
+        // Load new texture
+        texture = textureLoader.load(
+          materialDef.textureUrl, 
+          (loadedTexture) => {
+            console.log('✅ Texture loaded successfully:', materialDef.textureUrl);
+            loadedTexture.wrapS = THREE.RepeatWrapping;
+            loadedTexture.wrapT = THREE.RepeatWrapping;
+            loadedTexture.colorSpace = THREE.SRGBColorSpace;
+            loadedTexture.anisotropy = 16;
+            loadedTexture.needsUpdate = true;
+            
+            // Update material with loaded texture
+            material.map = loadedTexture;
+            material.needsUpdate = true;
+          },
+          undefined,
+          (error) => {
+            console.error('❌ Error loading texture:', materialDef.textureUrl, error);
+          }
+        );
+        
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 16;
+        
+        // Cache the base texture
+        textureCache.set(materialDef.textureUrl, texture);
+      }
       
       // Set texture repeat based on part
       if (materialDef.repeat && partId) {
         const repeatSettings = materialDef.repeat[partId] || materialDef.repeat.default || [1, 1];
         texture.repeat.set(repeatSettings[0], repeatSettings[1]);
-        console.log(`Set texture repeat for ${partId}:`, repeatSettings);
+        console.log(`🎨 Set texture repeat for ${partId}:`, repeatSettings);
       } else {
         texture.repeat.set(1, 1);
       }
       
-      textureCache.set(materialDef.textureUrl, texture);
+      // Cache this part-specific texture
+      textureCache.set(cacheKey, texture);
     }
     
     // Apply texture to material
