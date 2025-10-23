@@ -802,16 +802,16 @@ function App() {
                 listStyle: 'disc'
               }}>
                 <li style={{ marginBottom: '8px' }}>
-                  Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen
+                  Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen.
                 </li>
                 <li style={{ marginBottom: '8px' }}>
-                  Actual finish patterns and colors <strong>may vary</strong> from digital representations
+                  Actual finish patterns and colors <strong>may vary</strong> from digital representations.
                 </li>
                 <li style={{ marginBottom: '8px' }}>
-                  Variations in texture, tone, and pattern placement are normal and expected
+                  Variations in texture, tone, and pattern placement are normal and expected.
                 </li>
                 <li style={{ marginBottom: '8px' }}>
-                  This tool provides an <strong>approximate preview</strong> of your configuration
+                  This tool provides an <strong>approximate preview</strong> of your configuration.
                 </li>
               </ul>
 
@@ -820,7 +820,7 @@ function App() {
                 color: '#999',
                 fontStyle: 'italic'
               }}>
-                For exact finish specifications, please contact our sales team.
+                For exact finish specifications, please contact our sales team, <strong>Sales@cheytac.com</strong>.
               </p>
             </div>
 
@@ -850,7 +850,7 @@ function App() {
                 boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
               }}
             >
-              I UNDERSTAND — CONTINUE TO CONFIGURATOR
+              I UNDERSTAND
             </button>
           </div>
         </div>
@@ -908,7 +908,7 @@ function App() {
                 }}
               />
               <h2 style={{
-                color: '#BA2025',
+                color: '#ba2025',
                 fontSize: '28px',
                 fontWeight: '700',
                 marginBottom: '10px',
@@ -972,7 +972,7 @@ function App() {
                     lineHeight: '1.6',
                     fontFamily: 'Inter, system-ui, sans-serif'
                   }}>
-                    Click and drag anywhere on the rifle to rotate and view from different angles
+                    Click and drag anywhere on the rifle to rotate and view from different angles.
                   </div>
                 </div>
               </div>
@@ -1067,7 +1067,7 @@ function App() {
                     lineHeight: '1.6',
                     fontFamily: 'Inter, system-ui, sans-serif'
                   }}>
-                    Select from premium patterns (Multicam, Kryptek) or individual colors. Mix and match for a truly custom build
+                    Select from premium patterns (Multicam, Kryptek) or individual colors. Mix and match for a truly custom build.
                   </div>
                 </div>
               </div>
@@ -1095,7 +1095,7 @@ function App() {
               onMouseOver={(e) => e.currentTarget.style.background = '#9a1a1f'}
               onMouseOut={(e) => e.currentTarget.style.background = '#BA2025'}
             >
-              GOT IT — LET'S BUILD
+              GOT IT! LET'S BUILD
             </button>
 
             <div 

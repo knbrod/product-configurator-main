@@ -637,7 +637,7 @@ function LuxuryConfigModal() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                Patterns
+                Customize Your Rifle
               </button>
             </div>
           )}
@@ -665,7 +665,7 @@ function LuxuryConfigModal() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                Rifle Pattern
+                Customize with Pattern
               </button>
               <button
                 onClick={() => setShowingOverride(true)}
@@ -682,7 +682,7 @@ function LuxuryConfigModal() {
                   transition: 'all 0.2s ease'
                 }}
               >
-              Color Customization
+              Customize by Part
               </button>
             </div>
           )}
@@ -697,7 +697,7 @@ function LuxuryConfigModal() {
               fontSize: '13px',
               color: '#ccc'
             }}>
-              Select a color to apply to <strong>all configurable parts</strong>
+              Select a color to apply to <strong>all configurable parts</strong>.
             </div>
           )}
 
@@ -711,7 +711,7 @@ function LuxuryConfigModal() {
               fontSize: '13px',
               color: '#ccc'
             }}>
-              Select a color to accent the pattern for <strong>{part.label}</strong> only
+              Select a color to accent the pattern for <strong>{part.label}</strong> only.
             </div>
           )}
 
