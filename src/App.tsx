@@ -9,6 +9,7 @@ import { UIControls } from './components/UIControls/UIControls';
 import { ModelPreloader } from './components/ModelPreloader';
 import { PartClickHandler } from './components/PartClickHandler';
 
+
 // Disable console logs in production to improve performance
 if (import.meta.env.PROD) {
   console.log = () => {};
@@ -36,6 +37,72 @@ function showToast(message: string, type: 'success' | 'error' = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+/**
+ * Maps configurator color/pattern labels to website display names
+ * Handles both full rifle colors and patterns, detecting custom configurations
+ */
+const mapFinishToWebsite = (
+  finishLabel: string, 
+  finishMode: string,
+  hasCustomParts: boolean
+): string => {
+  // If there are ANY custom part colors configured, return "Other"
+  if (hasCustomParts) {
+    return 'Other – Submit example for pricing';
+  }
+
+  // Normalize the input
+  const normalized = finishLabel.toLowerCase().trim();
+
+  // Map solid Cerakote colors (when using Colors menu)
+  const colorMappings: Record<string, string> = {
+    'cerakote® absolute black': 'Black',
+    'cerakote absolute black': 'Black',
+    'cerakote® armor black': 'Black',
+    'cerakote armor black': 'Black',
+    
+    'cerakote® flat dark earth': 'F.D.E.',
+    'cerakote flat dark earth': 'F.D.E.',
+    'cerakote® fde': 'F.D.E.',
+    'cerakote fde': 'F.D.E.',
+    
+    'cerakote® od green': 'OD Green',
+    'cerakote od green': 'OD Green',
+    'cerakote® o.d. green': 'OD Green',
+    'cerakote o.d. green': 'OD Green',
+    
+    'cerakote® tungsten': 'Tungsten',
+    'cerakote tungsten': 'Tungsten',
+    
+    'cerakote® vortex bronze': 'Vortex Bronze',
+    'cerakote vortex bronze': 'Vortex Bronze',
+  };
+
+  // Map patterns (these keep their names)
+  const patternMappings: Record<string, string> = {
+    'kryptek® raid': 'Kryptek® Raid',
+    'kryptek raid': 'Kryptek® Raid',
+    'kryptek® highlander': 'Kryptek® Highlander',
+    'kryptek highlander': 'Kryptek® Highlander',
+    'kryptek® nomad': 'Kryptek® Nomad',
+    'kryptek nomad': 'Kryptek® Nomad',
+    'multicam': 'Multicam',
+  };
+
+  // Check color mappings first
+  if (colorMappings[normalized]) {
+    return colorMappings[normalized];
+  }
+
+  // Check pattern mappings
+  if (patternMappings[normalized]) {
+    return patternMappings[normalized];
+  }
+
+  // If no mapping found, return "Other"
+  return 'Other – Submit example for pricing';
+};
 
 function App() {
   console.log('App: Component rendering');
@@ -153,6 +220,7 @@ function App() {
         throw new Error('No manifest loaded');
       }
 
+      // Helper function to get finish name by ID
       const getFinishName = (finishId: string, isPattern: boolean = false): string => {
         if (isPattern) {
           const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === finishId);
@@ -163,19 +231,44 @@ function App() {
         }
       };
 
+      // Helper function to get part finish
       const getPartFinish = (partId: string): string => {
+        // Check for color override first (when in pattern mode with individual part changes)
         if (finishMode === 'patterns' && partColorOverrides[partId]) {
           return getFinishName(partColorOverrides[partId], false);
         }
         
+        // If in pattern mode without override, return pattern name
         if (finishMode === 'patterns' && selectedPattern) {
           return getFinishName(selectedPattern, true);
         }
         
+        // Otherwise return color from colors mode
         const colorId = selectedColors[partId];
         return colorId ? getFinishName(colorId, false) : 'Not specified';
       };
-      
+
+      // Determine if there are custom part colors
+      const hasCustomPartColors = (() => {
+        // If in colors mode, check if all parts have the same color
+        if (finishMode === 'colors') {
+          const configurableParts = manifest.configurableParts || [];
+          const colors = configurableParts.map(partId => selectedColors[partId]).filter(Boolean);
+          const uniqueColors = new Set(colors);
+          
+          // If more than one unique color, it's custom
+          return uniqueColors.size > 1;
+        }
+        
+        // If in patterns mode, check if there are any color overrides
+        if (finishMode === 'patterns') {
+          return Object.keys(partColorOverrides).length > 0;
+        }
+        
+        return false;
+      })();
+
+      // Capture screenshot
       const canvas = document.querySelector('canvas');
       let screenshot = '';
       
@@ -209,7 +302,53 @@ function App() {
         });
       }
 
+      // Get the main finish name for mapping
+      let mainFinish = '';
+      if (finishMode === 'patterns' && selectedPattern) {
+        mainFinish = getFinishName(selectedPattern, true);
+      } else if (finishMode === 'colors') {
+        // Get the first color as representative
+        const firstPartId = (manifest.configurableParts || [])[0];
+        if (firstPartId) {
+          mainFinish = getPartFinish(firstPartId);
+        }
+      }
+
+      // FALLBACK: If mainFinish is empty, try to get from receiver or barrel
+      if (!mainFinish) {
+        console.warn('Main finish is empty, using fallback...');
+        
+        // Try receiver first
+        const receiverFinish = getPartFinish('receiver');
+        if (receiverFinish && receiverFinish !== 'Not specified') {
+          mainFinish = receiverFinish;
+          console.log('Using receiver finish:', mainFinish);
+        } else {
+          // Try barrel
+          const barrelFinish = getPartFinish('barrel');
+          if (barrelFinish && barrelFinish !== 'Not specified') {
+            mainFinish = barrelFinish;
+            console.log('Using barrel finish:', mainFinish);
+          }
+        }
+      }
+
+      // Apply the mapping to get website-formatted finish name
+      const mappedFinish = mapFinishToWebsite(mainFinish, finishMode, hasCustomPartColors);
+
+      console.log('Final finish mapping:', {
+        mainFinish,
+        mappedFinish,
+        finishMode,
+        hasCustomPartColors
+      });
+
+      // Prepare configuration data
       const configData = {
+        // Main mapped finish for website
+        finish: mappedFinish,
+        
+        // Individual part finishes (for your records)
         receiver_finish: getPartFinish('receiver'),
         barrel_finish: getPartFinish('barrel'),
         stock_finish: getPartFinish('stock'),
@@ -219,24 +358,49 @@ function App() {
         bipod_finish: getPartFinish('bipodMonopod'),
         handguard_finish: getPartFinish('handguard'),
         muzzle_brake_finish: getPartFinish('muzzleBrake'),
+        
+        // Pattern/coating name (original from configurator)
         pattern_name: finishMode === 'patterns' && selectedPattern 
           ? getFinishName(selectedPattern, true) 
           : 'Custom Individual Colors',
+        
+        // Hardware selections
         caliber: manifest.calibers?.find((c: any) => c.id === state.selectedCaliber)?.label || 'Not specified',
         muzzle_device: state.selectedSuppressor && state.selectedSuppressor !== 'none'
           ? manifest.suppressors?.find((s: any) => s.id === state.selectedSuppressor)?.label || 'Standard Muzzle Brake'
           : 'Standard Muzzle Brake',
-        trigger: (manifest as any).triggers?.find((t: any) => t.id === state.selectedTrigger)?.label || 'Standard Trigger',
+        trigger: (() => {
+          const triggerId = state.selectedTrigger;
+          const trigger = (manifest as any).triggers?.find((t: any) => t.id === triggerId);
+          if (!trigger) return 'Standard Trigger';
+          
+          // Map configurator names to exact WooCommerce names
+          const triggerMap: Record<string, string> = {
+            'Timney Elite Hunter - Curved Shoe': 'Timney Elite Hunter with Curved Trigger shoe',
+            'Timney Elite Hunter - Straight Shoe': 'Timney Elite Hunter with straight trigger shoe',
+            'Timney 2-Stage - Curved Shoe': 'Timney 2-stage trigger with curved trigger shoe',
+            'Timney 2-Stage - Straight Shoe': 'Timney 2-stage trigger with straight trigger shoe'
+          };
+          
+          return triggerMap[trigger.label] || trigger.label;
+        })(),
+        
+        // Customer info
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
         email_opt_in: emailOptIn,
+        
+        // Screenshot
         screenshot: screenshot,
+        
+        // Metadata
         configuration_date: new Date().toISOString(),
-        finish_mode: finishMode
+        finish_mode: finishMode,
+        has_custom_parts: hasCustomPartColors
       };
 
-      console.log('Sending configuration data:', configData);
+      console.log('Sending configuration data to WordPress:', configData);
 
       const response = await fetch('https://cheytac.com/wp-json/configurator/v1/save', {
         method: 'POST',
@@ -261,6 +425,193 @@ function App() {
     } catch (error) {
       console.error('Order submission failed:', error);
       showToast('Failed to start order. Please try again.', 'error');
+      setIsSubmitting(false);
+    }
+  };
+// Handle quick add to cart (no sales contact)
+  const handleQuickAddToCart = async () => {
+    if (!customerName || !customerEmail || !customerPhone) {
+      showToast('Please enter your contact information', 'error');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(customerEmail)) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    const phoneDigits = customerPhone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      showToast('Please enter a valid phone number', 'error');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const state = useConfigStore.getState();
+      const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
+      
+      if (!manifest) {
+        throw new Error('No manifest loaded');
+      }
+
+      // Helper to get finish name
+      const getFinishName = (finishId: string, isPattern: boolean = false): string => {
+        if (isPattern) {
+          const pattern = manifest.finishModes?.patterns?.options?.find(opt => opt.id === finishId);
+          return pattern?.label || finishId;
+        } else {
+          const color = manifest.finishModes?.colors?.options?.find(opt => opt.id === finishId);
+          return color?.label || finishId;
+        }
+      };
+
+      const getPartFinish = (partId: string): string => {
+        if (finishMode === 'patterns' && partColorOverrides[partId]) {
+          return getFinishName(partColorOverrides[partId], false);
+        }
+        if (finishMode === 'patterns' && selectedPattern) {
+          return getFinishName(selectedPattern, true);
+        }
+        const colorId = selectedColors[partId];
+        return colorId ? getFinishName(colorId, false) : 'Not specified';
+      };
+
+      // Determine if there are custom part colors
+      const hasCustomPartColors = (() => {
+        if (finishMode === 'colors') {
+          const configurableParts = manifest.configurableParts || [];
+          const colors = configurableParts.map(partId => selectedColors[partId]).filter(Boolean);
+          const uniqueColors = new Set(colors);
+          return uniqueColors.size > 1;
+        }
+        if (finishMode === 'patterns') {
+          return Object.keys(partColorOverrides).length > 0;
+        }
+        return false;
+      })();
+
+      // Get main finish
+      let mainFinish = '';
+      if (finishMode === 'patterns' && selectedPattern) {
+        mainFinish = getFinishName(selectedPattern, true);
+      } else if (finishMode === 'colors') {
+        const firstPartId = (manifest.configurableParts || [])[0];
+        if (firstPartId) {
+          mainFinish = getPartFinish(firstPartId);
+        }
+      }
+
+      // FALLBACK
+      if (!mainFinish) {
+        const receiverFinish = getPartFinish('receiver');
+        if (receiverFinish && receiverFinish !== 'Not specified') {
+          mainFinish = receiverFinish;
+        } else {
+          const barrelFinish = getPartFinish('barrel');
+          if (barrelFinish && barrelFinish !== 'Not specified') {
+            mainFinish = barrelFinish;
+          }
+        }
+      }
+
+      // Apply the mapping
+      const mappedFinish = mapFinishToWebsite(mainFinish, finishMode, hasCustomPartColors);
+
+      console.log('Quick add finish mapping:', {
+        mainFinish,
+        mappedFinish,
+        finishMode,
+        hasCustomPartColors
+      });
+
+      // Use the SAME endpoint as the full order, just without screenshot
+      const configData = {
+        // Main mapped finish for website
+        finish: mappedFinish,
+        
+        // Individual part finishes (for your records)
+        receiver_finish: getPartFinish('receiver'),
+        barrel_finish: getPartFinish('barrel'),
+        stock_finish: getPartFinish('stock'),
+        cheek_piece_finish: getPartFinish('cheekPiece'),
+        bolt_finish: getPartFinish('boltBody'),
+        magazine_finish: getPartFinish('magazine'),
+        bipod_finish: getPartFinish('bipodMonopod'),
+        handguard_finish: getPartFinish('handguard'),
+        muzzle_brake_finish: getPartFinish('muzzleBrake'),
+        
+        // Pattern/coating name
+        pattern_name: finishMode === 'patterns' && selectedPattern 
+          ? getFinishName(selectedPattern, true) 
+          : 'Custom Individual Colors',
+        
+        // Hardware selections
+        caliber: manifest.calibers?.find((c: any) => c.id === state.selectedCaliber)?.label || 'Not specified',
+        muzzle_device: state.selectedSuppressor && state.selectedSuppressor !== 'none'
+          ? manifest.suppressors?.find((s: any) => s.id === state.selectedSuppressor)?.label || 'Standard Muzzle Brake'
+          : 'Standard Muzzle Brake',
+        trigger: (() => {
+          const triggerId = state.selectedTrigger;
+          const trigger = (manifest as any).triggers?.find((t: any) => t.id === triggerId);
+          if (!trigger) return 'Standard Trigger';
+          
+          const triggerMap: Record<string, string> = {
+            'Timney Elite Hunter - Curved Shoe': 'Timney Elite Hunter with Curved Trigger shoe',
+            'Timney Elite Hunter - Straight Shoe': 'Timney Elite Hunter with straight trigger shoe',
+            'Timney 2-Stage - Curved Shoe': 'Timney 2-stage trigger with curved trigger shoe',
+            'Timney 2-Stage - Straight Shoe': 'Timney 2-stage trigger with straight trigger shoe'
+          };
+          
+          return triggerMap[trigger.label] || trigger.label;
+        })(),
+        
+        // Customer info
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        email_opt_in: emailOptIn,
+        
+        // No screenshot for quick add
+        screenshot: '',
+        
+        // Metadata
+        configuration_date: new Date().toISOString(),
+        finish_mode: finishMode,
+        has_custom_parts: hasCustomPartColors,
+        
+        // Flag to indicate this is a quick add (skip sales contact email)
+        quick_add: true
+      };
+
+      console.log('Quick add config:', configData);
+
+      const response = await fetch('https://cheytac.com/wp-json/configurator/v1/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(configData)
+      });
+
+      const result = await response.json();
+      console.log('Quick add result:', result);
+
+      if (result.success) {
+        showToast('Adding to cart...', 'success');
+        
+        setTimeout(() => {
+          window.location.href = result.redirect_url;
+        }, 500);
+      } else {
+        throw new Error(result.message || 'Failed to add to cart');
+      }
+
+    } catch (error) {
+      console.error('Quick add failed:', error);
+      showToast('Failed to add to cart. Please try again.', 'error');
       setIsSubmitting(false);
     }
   };
@@ -721,140 +1072,146 @@ function App() {
       </div>
 
       {showDisclaimer && (
-        <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowDisclaimer(false);
-              setDisclaimerAcknowledged(true);
-            }
+  <div 
+    onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        setShowDisclaimer(false);
+        setDisclaimerAcknowledged(true);
+      }
+    }}
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.85)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 999999,
+      padding: 'clamp(10px, 3vw, 20px)',
+      animation: 'fadeIn 0.3s ease-in',
+      cursor: 'pointer',
+      overflowY: 'auto'
+    }}>
+    <div 
+      className="disclaimer-modal-content"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+        borderRadius: 'clamp(8px, 1.5vw, 12px)',
+        padding: 'clamp(25px, 5vw, 40px)',
+        maxWidth: 'min(600px, 90vw)',
+        width: '100%',
+        border: '2px solid #ba2025',
+        boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+        animation: 'slideUp 0.4s ease-out',
+        cursor: 'default',
+        margin: 'auto',
+        maxHeight: '90vh',
+        overflowY: 'auto'
+      }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: 'clamp(20px, 4vw, 30px)'
+      }}>
+        <img 
+          src="/logo.png" 
+          alt="CheyTac USA" 
+          style={{ 
+            height: 'clamp(40px, 8vw, 60px)', 
+            width: 'auto',
+            marginBottom: 'clamp(15px, 3vw, 20px)'
           }}
-          style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999999,
-          padding: '20px',
-          animation: 'fadeIn 0.3s ease-in',
-          cursor: 'pointer'
+        />
+        <h2 style={{
+          color: '#BA2025',
+          fontSize: 'clamp(20px, 4vw, 24px)',
+          fontWeight: '700',
+          marginBottom: 'clamp(8px, 1.5vw, 10px)',
+          letterSpacing: '0.5px',
+          lineHeight: '1.2'
         }}>
-          <div 
-            className="disclaimer-modal-content"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-            borderRadius: '12px',
-            padding: '40px',
-            maxWidth: '600px',
-            width: '100%',
-            border: '2px solid #ba2025',
-            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
-            animation: 'slideUp 0.4s ease-out',
-            cursor: 'default'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '30px'
-            }}>
-              <img 
-                src="/logo.png" 
-                alt="CheyTac USA" 
-                style={{ 
-                  height: '60px', 
-                  width: 'auto',
-                  marginBottom: '20px'
-                }}
-              />
-              <h2 style={{
-                color: '#BA2025',
-                fontSize: '24px',
-                fontWeight: '700',
-                marginBottom: '10px',
-                letterSpacing: '0.5px'
-              }}>
-                VISUALIZATION NOTICE
-              </h2>
-            </div>
+          VISUALIZATION NOTICE
+        </h2>
+      </div>
 
-            <div style={{
-              color: '#e5e5e5',
-              fontSize: '16px',
-              lineHeight: '1.6',
-              marginBottom: '30px',
-              textAlign: 'left'
-            }}>
-              <p style={{ marginBottom: '15px' }}>
-                This configurator is designed for <strong style={{ color: '#BA2025' }}>visualization purposes only</strong>.
-              </p>
-              
-              <p style={{ marginBottom: '15px' }}>
-                <strong>Please Note:</strong>
-              </p>
-              
-              <ul style={{ 
-                paddingLeft: '20px',
-                marginBottom: '15px',
-                listStyle: 'disc'
-              }}>
-                <li style={{ marginBottom: '8px' }}>
-                  Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen.
-                </li>
-                <li style={{ marginBottom: '8px' }}>
-                  Actual finish patterns and colors <strong>may vary</strong> from digital representations.
-                </li>
-                <li style={{ marginBottom: '8px' }}>
-                  Variations in texture, tone, and pattern placement are normal and expected.
-                </li>
-                <li style={{ marginBottom: '8px' }}>
-                  This tool provides an <strong>approximate preview</strong> of your configuration.
-                </li>
-              </ul>
+      <div style={{
+        color: '#e5e5e5',
+        fontSize: 'clamp(14px, 2.8vw, 16px)',
+        lineHeight: '1.6',
+        marginBottom: 'clamp(20px, 4vw, 30px)',
+        textAlign: 'left'
+      }}>
+        <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
+          This configurator is designed for <strong style={{ color: '#BA2025' }}>visualization purposes only</strong>.
+        </p>
+        
+        <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
+          <strong>Please Note:</strong>
+        </p>
+        
+        <ul style={{ 
+          paddingLeft: 'clamp(15px, 3vw, 20px)',
+          marginBottom: 'clamp(12px, 2.5vw, 15px)',
+          listStyle: 'disc'
+        }}>
+          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+            Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen
+          </li>
+          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+            Actual finish patterns and colors <strong>may vary</strong> from digital representations
+          </li>
+          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+            Variations in texture, tone, and pattern placement are normal and expected
+          </li>
+          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+            This tool provides an <strong>approximate preview</strong> of your configuration
+          </li>
+        </ul>
 
-              <p style={{ 
-                fontSize: '14px',
-                color: '#999',
-                fontStyle: 'italic'
-              }}>
-                For exact finish specifications, please contact our sales team, <strong>Sales@cheytac.com</strong>.
-              </p>
-            </div>
+        <p style={{ 
+          fontSize: 'clamp(12px, 2.3vw, 14px)',
+          color: '#999',
+          fontStyle: 'italic'
+        }}>
+          For exact finish specifications, please contact our sales team.
+        </p>
+      </div>
 
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowDisclaimer(false);
-                setDisclaimerAcknowledged(true);
-              }}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-              type="button"
-              style={{
-                width: '100%',
-                background: '#BA2025',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '16px 24px',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                letterSpacing: '0.5px',
-                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
-              }}
-            >
-              I UNDERSTAND
-            </button>
-          </div>
-        </div>
-      )}
+      <button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowDisclaimer(false);
+          setDisclaimerAcknowledged(true);
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        type="button"
+        style={{
+          width: '100%',
+          background: '#BA2025',
+          color: 'white',
+          border: 'none',
+          borderRadius: 'clamp(6px, 1.2vw, 8px)',
+          padding: 'clamp(14px, 2.8vw, 16px) clamp(20px, 4vw, 24px)',
+          fontSize: 'clamp(14px, 2.8vw, 16px)',
+          fontWeight: '700',
+          cursor: 'pointer',
+          letterSpacing: '0.5px',
+          boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+          minHeight: '44px'
+        }}
+      >
+        I UNDERSTAND — CONTINUE TO CONFIGURATOR
+      </button>
+    </div>
+  </div>
+)}
 
       {/* Tutorial Overlay - Shows Every Visit */}
       {showTutorial && (
@@ -875,7 +1232,7 @@ function App() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 999999,
-            padding: '20px',
+            padding: 'clamp(10px, 3vw, 20px)',
             animation: 'fadeIn 0.3s ease-in',
             cursor: 'pointer'
           }}
@@ -884,42 +1241,48 @@ function App() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-              borderRadius: '12px',
-              padding: '40px',
-              maxWidth: '600px',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              padding: 'clamp(25px, 5vw, 40px)',
+              maxWidth: 'min(600px, 90vw)',
               width: '100%',
               border: '2px solid #ba2025',
               boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
               animation: 'slideUp 0.4s ease-out',
-              cursor: 'default'
+              cursor: 'default',
+              margin: 'auto',
+              maxHeight: 'calc(100vh - clamp(20px, 6vw, 40px))',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             <div style={{
               textAlign: 'center',
-              marginBottom: '30px'
+              marginBottom: 'clamp(20px, 4vw, 30px)'
             }}>
               <img 
                 src="/logo.png" 
                 alt="CheyTac USA" 
                 style={{ 
-                  height: '60px', 
+                  height: 'clamp(40px, 8vw, 60px)', 
                   width: 'auto',
-                  marginBottom: '20px'
+                  marginBottom: 'clamp(15px, 3vw, 20px)'
                 }}
               />
               <h2 style={{
-                color: '#ba2025',
-                fontSize: '28px',
+                color: '#BA2025',
+                fontSize: 'clamp(22px, 4.5vw, 28px)',
                 fontWeight: '700',
-                marginBottom: '10px',
+                marginBottom: 'clamp(8px, 1.5vw, 10px)',
                 letterSpacing: '1px',
-                fontFamily: 'Inter, system-ui, sans-serif'
+                fontFamily: 'Inter, system-ui, sans-serif',
+                lineHeight: '1.2'
               }}>
                 HOW TO CONFIGURE
               </h2>
               <p style={{
                 color: '#999',
-                fontSize: '14px',
+                fontSize: 'clamp(12px, 2.3vw, 14px)',
                 letterSpacing: '1px',
                 textTransform: 'uppercase',
                 fontFamily: 'Inter, system-ui, sans-serif'
@@ -928,29 +1291,31 @@ function App() {
               </p>
             </div>
 
-            <div style={{ marginBottom: '30px' }}>
+            <div style={{ marginBottom: 'clamp(20px, 4vw, 30px)' }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                marginBottom: '25px',
-                padding: '20px',
+                marginBottom: 'clamp(15px, 3vw, 25px)',
+                padding: 'clamp(15px, 3vw, 20px)',
                 background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                borderLeft: '3px solid #BA2025'
+                borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                borderLeft: '3px solid #BA2025',
+                gap: 'clamp(12px, 2.5vw, 20px)'
               }}>
                 <div style={{
                   background: '#BA2025',
                   color: 'white',
-                  width: '36px',
-                  height: '36px',
+                  width: 'clamp(32px, 6vw, 36px)',
+                  height: 'clamp(32px, 6vw, 36px)',
+                  minWidth: '32px',
+                  minHeight: '32px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '18px',
+                  fontSize: 'clamp(16px, 3vw, 18px)',
                   fontWeight: '700',
                   flexShrink: 0,
-                  marginRight: '20px',
                   fontFamily: 'Inter, system-ui, sans-serif'
                 }}>
                   1
@@ -958,21 +1323,22 @@ function App() {
                 <div style={{ flex: 1 }}>
                   <div style={{
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: 'clamp(14px, 2.8vw, 16px)',
                     fontWeight: '600',
-                    marginBottom: '8px',
+                    marginBottom: 'clamp(6px, 1.2vw, 8px)',
                     letterSpacing: '0.5px',
-                    fontFamily: 'Inter, system-ui, sans-serif'
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    lineHeight: '1.3'
                   }}>
                     🖱️ ROTATE THE MODEL
                   </div>
                   <div style={{
                     color: '#ccc',
-                    fontSize: '14px',
+                    fontSize: 'clamp(12px, 2.3vw, 14px)',
                     lineHeight: '1.6',
                     fontFamily: 'Inter, system-ui, sans-serif'
                   }}>
-                    Click and drag anywhere on the rifle to rotate and view from different angles.
+                    Click and drag anywhere on the rifle to rotate and view from different angles
                   </div>
                 </div>
               </div>
@@ -980,25 +1346,27 @@ function App() {
               <div style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                marginBottom: '25px',
-                padding: '20px',
+                marginBottom: 'clamp(15px, 3vw, 25px)',
+                padding: 'clamp(15px, 3vw, 20px)',
                 background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                borderLeft: '3px solid #BA2025'
+                borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                borderLeft: '3px solid #BA2025',
+                gap: 'clamp(12px, 2.5vw, 20px)'
               }}>
                 <div style={{
                   background: '#BA2025',
                   color: 'white',
-                  width: '36px',
-                  height: '36px',
+                  width: 'clamp(32px, 6vw, 36px)',
+                  height: 'clamp(32px, 6vw, 36px)',
+                  minWidth: '32px',
+                  minHeight: '32px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '18px',
+                  fontSize: 'clamp(16px, 3vw, 18px)',
                   fontWeight: '700',
                   flexShrink: 0,
-                  marginRight: '20px',
                   fontFamily: 'Inter, system-ui, sans-serif'
                 }}>
                   2
@@ -1006,17 +1374,18 @@ function App() {
                 <div style={{ flex: 1 }}>
                   <div style={{
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: 'clamp(14px, 2.8vw, 16px)',
                     fontWeight: '600',
-                    marginBottom: '8px',
+                    marginBottom: 'clamp(6px, 1.2vw, 8px)',
                     letterSpacing: '0.5px',
-                    fontFamily: 'Inter, system-ui, sans-serif'
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    lineHeight: '1.3'
                   }}>
                     👆 CLICK ON PARTS
                   </div>
                   <div style={{
                     color: '#ccc',
-                    fontSize: '14px',
+                    fontSize: 'clamp(12px, 2.3vw, 14px)',
                     lineHeight: '1.6',
                     fontFamily: 'Inter, system-ui, sans-serif'
                   }}>
@@ -1028,24 +1397,26 @@ function App() {
               <div style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                padding: '20px',
+                padding: 'clamp(15px, 3vw, 20px)',
                 background: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                borderLeft: '3px solid #BA2025'
+                borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                borderLeft: '3px solid #BA2025',
+                gap: 'clamp(12px, 2.5vw, 20px)'
               }}>
                 <div style={{
                   background: '#BA2025',
                   color: 'white',
-                  width: '36px',
-                  height: '36px',
+                  width: 'clamp(32px, 6vw, 36px)',
+                  height: 'clamp(32px, 6vw, 36px)',
+                  minWidth: '32px',
+                  minHeight: '32px',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '18px',
+                  fontSize: 'clamp(16px, 3vw, 18px)',
                   fontWeight: '700',
                   flexShrink: 0,
-                  marginRight: '20px',
                   fontFamily: 'Inter, system-ui, sans-serif'
                 }}>
                   3
@@ -1053,21 +1424,22 @@ function App() {
                 <div style={{ flex: 1 }}>
                   <div style={{
                     color: 'white',
-                    fontSize: '16px',
+                    fontSize: 'clamp(14px, 2.8vw, 16px)',
                     fontWeight: '600',
-                    marginBottom: '8px',
+                    marginBottom: 'clamp(6px, 1.2vw, 8px)',
                     letterSpacing: '0.5px',
-                    fontFamily: 'Inter, system-ui, sans-serif'
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    lineHeight: '1.3'
                   }}>
                     🎨 CHOOSE YOUR FINISH
                   </div>
                   <div style={{
                     color: '#ccc',
-                    fontSize: '14px',
+                    fontSize: 'clamp(12px, 2.3vw, 14px)',
                     lineHeight: '1.6',
                     fontFamily: 'Inter, system-ui, sans-serif'
                   }}>
-                    Select from premium patterns (Multicam, Kryptek) or individual colors. Mix and match for a truly custom build.
+                    Select from premium patterns (Multicam, Kryptek) or individual colors. Mix and match for a truly custom build
                   </div>
                 </div>
               </div>
@@ -1082,20 +1454,21 @@ function App() {
                 background: '#BA2025',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
-                padding: '16px 24px',
-                fontSize: '16px',
+                borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                padding: 'clamp(14px, 2.8vw, 16px) clamp(20px, 4vw, 24px)',
+                fontSize: 'clamp(14px, 2.8vw, 16px)',
                 fontWeight: '700',
                 cursor: 'pointer',
                 letterSpacing: '1px',
                 fontFamily: 'Inter, system-ui, sans-serif',
                 boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                minHeight: '44px'
               }}
               onMouseOver={(e) => e.currentTarget.style.background = '#9a1a1f'}
               onMouseOut={(e) => e.currentTarget.style.background = '#BA2025'}
             >
-              GOT IT! LET'S BUILD
+              GOT IT — LET'S BUILD
             </button>
 
             <div 
@@ -1104,9 +1477,9 @@ function App() {
               }}
               style={{
                 textAlign: 'center',
-                marginTop: '15px',
+                marginTop: 'clamp(12px, 2.5vw, 15px)',
                 color: '#666',
-                fontSize: '12px',
+                fontSize: 'clamp(11px, 2vw, 12px)',
                 cursor: 'pointer',
                 fontFamily: 'Inter, system-ui, sans-serif'
               }}
@@ -1117,277 +1490,329 @@ function App() {
         </div>
       )}
 
-      {showOrderModal && (
-        <div 
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSubmitting) {
+{showOrderModal && (
+  <div 
+    onClick={(e) => {
+      if (e.target === e.currentTarget && !isSubmitting) {
+        setShowOrderModal(false);
+      }
+    }}
+    style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.85)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 999999,
+      padding: 'clamp(10px, 3vw, 20px)',
+      animation: 'fadeIn 0.3s ease-in',
+      cursor: 'pointer',
+      overflowY: 'auto'
+    }}>
+    <div 
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+        borderRadius: 'clamp(8px, 1.5vw, 12px)',
+        padding: 'clamp(20px, 4vw, 40px)',
+        maxWidth: 'min(500px, 90vw)',
+        width: '100%',
+        border: '2px solid #ba2025',
+        boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+        animation: 'slideUp 0.4s ease-out',
+        cursor: 'default',
+        margin: 'auto',
+        maxHeight: '90vh',
+        overflowY: 'auto'
+      }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: 'clamp(15px, 3vw, 30px)'
+      }}>
+        <img 
+          src="https://cheytac.com/wp-content/uploads/2025/03/cropped-Cheytac-Logos-white.png" 
+          alt="CheyTac USA" 
+          style={{ 
+            height: 'clamp(40px, 8vw, 60px)', 
+            width: 'auto',
+            marginBottom: 'clamp(10px, 2vw, 20px)'
+          }}
+        />
+        <h2 style={{
+          color: '#BA2025',
+          fontSize: 'clamp(18px, 4vw, 24px)',
+          fontWeight: '700',
+          marginBottom: 'clamp(5px, 1vw, 10px)',
+          letterSpacing: '0.5px',
+          lineHeight: '1.2'
+        }}>
+          COMPLETE YOUR ORDER
+        </h2>
+        <p style={{
+          color: '#aaa',
+          fontSize: 'clamp(12px, 2.5vw, 14px)',
+          lineHeight: '1.4'
+        }}>
+          Choose how you'd like to proceed with your M200 configuration
+        </p>
+      </div>
+
+      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+        <label style={{
+          display: 'block',
+          color: '#e5e5e5',
+          fontSize: 'clamp(13px, 2.5vw, 14px)',
+          fontWeight: '600',
+          marginBottom: 'clamp(6px, 1.2vw, 8px)'
+        }}>
+          Your Name *
+        </label>
+        <input
+          type="text"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          placeholder="John Doe"
+          disabled={isSubmitting}
+          style={{
+            width: '100%',
+            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            border: '2px solid #4a4a4a',
+            background: '#2a2a2a',
+            color: 'white',
+            fontSize: 'clamp(14px, 2.8vw, 16px)',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+        />
+      </div>
+
+      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+        <label style={{
+          display: 'block',
+          color: '#e5e5e5',
+          fontSize: 'clamp(13px, 2.5vw, 14px)',
+          fontWeight: '600',
+          marginBottom: 'clamp(6px, 1.2vw, 8px)'
+        }}>
+          Email Address *
+        </label>
+        <input
+          type="email"
+          value={customerEmail}
+          onChange={(e) => setCustomerEmail(e.target.value)}
+          placeholder="john@example.com"
+          disabled={isSubmitting}
+          style={{
+            width: '100%',
+            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            border: '2px solid #4a4a4a',
+            background: '#2a2a2a',
+            color: 'white',
+            fontSize: 'clamp(14px, 2.8vw, 16px)',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+        />
+      </div>
+
+      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+        <label style={{
+          display: 'block',
+          color: '#e5e5e5',
+          fontSize: 'clamp(13px, 2.5vw, 14px)',
+          fontWeight: '600',
+          marginBottom: 'clamp(6px, 1.2vw, 8px)'
+        }}>
+          Phone Number *
+        </label>
+        <input
+          type="tel"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          placeholder="(555) 123-4567"
+          disabled={isSubmitting}
+          style={{
+            width: '100%',
+            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            border: '2px solid #4a4a4a',
+            background: '#2a2a2a',
+            color: 'white',
+            fontSize: 'clamp(14px, 2.8vw, 16px)',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+            boxSizing: 'border-box'
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+        />
+      </div>
+
+      <div style={{
+        margin: 'clamp(20px, 4vw, 30px) 0 clamp(15px, 3vw, 20px) 0',
+        padding: 'clamp(15px, 3vw, 20px)',
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(186, 32, 37, 0.3)',
+        borderRadius: 'clamp(3px, 0.6vw, 4px)'
+      }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          cursor: 'pointer',
+          color: '#ccc'
+        }}>
+          <input 
+            type="checkbox" 
+            checked={emailOptIn}
+            onChange={(e) => setEmailOptIn(e.target.checked)}
+            disabled={isSubmitting}
+            style={{
+              width: 'clamp(18px, 3vw, 20px)',
+              height: 'clamp(18px, 3vw, 20px)',
+              marginRight: 'clamp(10px, 2vw, 15px)',
+              marginTop: 'clamp(2px, 0.4vw, 3px)',
+              accentColor: '#BA2025',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          />
+          <span style={{ flex: 1 }}>
+            <strong style={{ 
+              color: '#BA2025', 
+              fontSize: 'clamp(14px, 2.8vw, 16px)', 
+              display: 'block', 
+              marginBottom: 'clamp(3px, 0.8vw, 5px)',
+              lineHeight: '1.3'
+            }}>
+              Seize the Distance and Stay Updated!
+            </strong>
+            <span style={{ 
+              color: '#aaa', 
+              fontSize: 'clamp(12px, 2.3vw, 14px)',
+              lineHeight: '1.4'
+            }}>
+              Get exclusive updates on new CheyTac products, limited releases, special offers, and merchandise. 
+              Unsubscribe anytime.
+            </span>
+          </span>
+        </label>
+        
+        <p style={{
+          margin: 'clamp(10px, 2vw, 12px) 0 0 clamp(28px, 5vw, 35px)',
+          fontSize: 'clamp(10px, 2vw, 11px)',
+          color: '#666',
+          lineHeight: '1.5'
+        }}>
+          By checking this box, you consent to receive marketing emails from CheyTac USA. 
+          We respect your privacy and never share your information. 
+          <a href="https://cheytac.com/privacy-policy" target="_blank" style={{ color: '#BA2025', textDecoration: 'none' }}>
+            Privacy Policy
+          </a>
+        </p>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        flexDirection: window.innerWidth < 500 ? 'column' : 'row',
+        gap: 'clamp(8px, 1.5vw, 12px)',
+        marginBottom: 'clamp(12px, 2.5vw, 15px)'
+      }}>
+        <button
+          onClick={() => {
+            if (!isSubmitting) {
               setShowOrderModal(false);
+              setCustomerName('');
+              setCustomerEmail('');
+              setCustomerPhone('');
+              setEmailOptIn(false);
             }
           }}
+          disabled={isSubmitting}
           style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999999,
-          padding: '20px',
-          animation: 'fadeIn 0.3s ease-in',
-          cursor: 'pointer'
-        }}>
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            style={{
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-            borderRadius: '12px',
-            padding: '40px',
-            maxWidth: '500px',
+            flex: 1,
+            background: '#4a4a4a',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+            fontSize: 'clamp(14px, 2.8vw, 16px)',
+            fontWeight: '600',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.5 : 1,
+            minHeight: '44px'
+          }}
+        >
+          Cancel
+        </button>
+        
+        <button
+          onClick={handleStartOrder}
+          disabled={isSubmitting}
+          style={{
+            flex: 1,
+            background: isSubmitting ? '#8B1519' : '#BA2025',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+            fontSize: 'clamp(14px, 2.8vw, 16px)',
+            fontWeight: '700',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            letterSpacing: '0.5px',
+            boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+            minHeight: '44px'
+          }}
+        >
+          {isSubmitting ? 'Processing...' : 'Contact Sales'}
+        </button>
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <button
+          onClick={handleQuickAddToCart}
+          disabled={isSubmitting}
+          style={{
             width: '100%',
-            border: '2px solid #ba2025',
-            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
-            animation: 'slideUp 0.4s ease-out',
-            cursor: 'default'
-          }}>
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '30px'
-            }}>
-              <img 
-                src="https://cheytac.com/wp-content/uploads/2025/03/cropped-Cheytac-Logos-white.png" 
-                alt="CheyTac USA" 
-                style={{ 
-                  height: '60px', 
-                  width: 'auto',
-                  marginBottom: '20px'
-                }}
-              />
-              <h2 style={{
-                color: '#BA2025',
-                fontSize: '24px',
-                fontWeight: '700',
-                marginBottom: '10px',
-                letterSpacing: '0.5px'
-              }}>
-                START ORDER PROCESS
-              </h2>
-              <p style={{
-                color: '#aaa',
-                fontSize: '14px'
-              }}>
-                We'll save your configuration and contact you to complete your M200 order
-              </p>
-            </div>
-
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{
-                display: 'block',
-                color: '#e5e5e5',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '8px'
-              }}>
-                Your Name *
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="John Doe"
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '2px solid #4a4a4a',
-                  background: '#2a2a2a',
-                  color: 'white',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-              />
-            </div>
-
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{
-                display: 'block',
-                color: '#e5e5e5',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '8px'
-              }}>
-                Email Address *
-              </label>
-              <input
-                type="email"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-                placeholder="john@example.com"
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '2px solid #4a4a4a',
-                  background: '#2a2a2a',
-                  color: 'white',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-              />
-            </div>
-
-            <div style={{ marginBottom: '25px' }}>
-              <label style={{
-                display: 'block',
-                color: '#e5e5e5',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '8px'
-              }}>
-                Phone Number *
-              </label>
-              <input
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-                disabled={isSubmitting}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: '8px',
-                  border: '2px solid #4a4a4a',
-                  background: '#2a2a2a',
-                  color: 'white',
-                  fontSize: '16px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-              />
-            </div>
-
-            <div style={{
-              margin: '30px 0 20px 0',
-              padding: '20px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(186, 32, 37, 0.3)',
-              borderRadius: '4px'
-            }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                cursor: 'pointer',
-                color: '#ccc'
-              }}>
-                <input 
-                  type="checkbox" 
-                  checked={emailOptIn}
-                  onChange={(e) => setEmailOptIn(e.target.checked)}
-                  disabled={isSubmitting}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    marginRight: '15px',
-                    marginTop: '3px',
-                    accentColor: '#BA2025',
-                    cursor: 'pointer'
-                  }}
-                />
-                <span style={{ flex: 1 }}>
-                  <strong style={{ color: '#BA2025', fontSize: '16px', display: 'block', marginBottom: '5px' }}>
-                    Seize the Distance and Stay Updated!
-                  </strong>
-                  <span style={{ color: '#aaa', fontSize: '14px' }}>
-                    Get exclusive updates on new CheyTac products, limited releases, special offers, and merchandise. 
-                    Unsubscribe anytime.
-                  </span>
-                </span>
-              </label>
-              
-              <p style={{
-                margin: '12px 0 0 35px',
-                fontSize: '11px',
-                color: '#666',
-                lineHeight: '1.5'
-              }}>
-                By checking this box, you consent to receive marketing emails from CheyTac USA. 
-                We respect your privacy and never share your information. 
-                <a href="https://cheytac.com/privacy-policy" target="_blank" style={{ color: '#BA2025', textDecoration: 'none' }}>
-                  Privacy Policy
-                </a>
-              </p>
-            </div>
-
-            <div style={{
-              display: 'flex',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => {
-                  if (!isSubmitting) {
-                    setShowOrderModal(false);
-                    setCustomerName('');
-                    setCustomerEmail('');
-                    setCustomerPhone('');
-                    setEmailOptIn(false);
-                  }
-                }}
-                disabled={isSubmitting}
-                style={{
-                  flex: 1,
-                  background: '#4a4a4a',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '14px 24px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  opacity: isSubmitting ? 0.5 : 1
-                }}
-              >
-                Cancel
-              </button>
-              
-              <button
-                onClick={handleStartOrder}
-                disabled={isSubmitting}
-                style={{
-                  flex: 1,
-                  background: isSubmitting ? '#8B1519' : '#BA2025',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '14px 24px',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  letterSpacing: '0.5px',
-                  boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)'
-                }}
-              >
-                {isSubmitting ? 'Processing...' : 'Continue to Order'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+            background: 'transparent',
+            color: '#BA2025',
+            border: '2px solid #BA2025',
+            borderRadius: 'clamp(6px, 1.2vw, 8px)',
+            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+            fontSize: 'clamp(13px, 2.5vw, 14px)',
+            fontWeight: '600',
+            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+            opacity: isSubmitting ? 0.5 : 1,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            transition: 'all 0.2s',
+            minHeight: '44px'
+          }}
+          onMouseOver={(e) => {
+            if (!isSubmitting) {
+              e.currentTarget.style.background = 'rgba(186, 32, 37, 0.1)';
+            }
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          Add to Cart Without Sales Contact
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {showShareModal && (
         <div 
           onClick={(e) => {
@@ -1401,7 +1826,7 @@ function App() {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0, 0, 0, 0.85)',
+          background: '#BA2025',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1418,8 +1843,8 @@ function App() {
             padding: '40px',
             maxWidth: '450px',
             width: '100%',
-            border: '2px solid #ba2025',
-            boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+            border: '10px solid #ba2025',
+            boxShadow: '0 8px 32px #ba2025',
             animation: 'slideUp 0.4s ease-out',
             cursor: 'default'
           }}>
