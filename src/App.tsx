@@ -193,6 +193,8 @@ function App() {
 
   // Handle order process submission
   const handleStartOrder = async () => {
+    console.log('🔴 handleStartOrder called - SHOULD SEND EMAIL');
+    
     if (!customerName || !customerEmail || !customerPhone) {
       showToast('Please enter your name, email, and phone number', 'error');
       return;
@@ -397,7 +399,10 @@ function App() {
         // Metadata
         configuration_date: new Date().toISOString(),
         finish_mode: finishMode,
-        has_custom_parts: hasCustomPartColors
+        has_custom_parts: hasCustomPartColors,
+        
+        // CRITICAL: Flag to send email to sales team
+        send_to_sales: true
       };
 
       console.log('Sending configuration data to WordPress:', configData);
@@ -428,8 +433,11 @@ function App() {
       setIsSubmitting(false);
     }
   };
-// Handle quick add to cart (no sales contact)
+
+  // Handle quick add to cart (no sales contact)
   const handleQuickAddToCart = async () => {
+    console.log('🟢 handleQuickAddToCart called - SHOULD NOT SEND EMAIL');
+    
     if (!customerName || !customerEmail || !customerPhone) {
       showToast('Please enter your contact information', 'error');
       return;
@@ -582,8 +590,8 @@ function App() {
         finish_mode: finishMode,
         has_custom_parts: hasCustomPartColors,
         
-        // Flag to indicate this is a quick add (skip sales contact email)
-        quick_add: true
+        // CRITICAL: Flag to skip sales contact email
+        send_to_sales: false
       };
 
       console.log('Quick add config:', configData);
@@ -1730,7 +1738,9 @@ function App() {
         marginBottom: 'clamp(12px, 2.5vw, 15px)'
       }}>
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (!isSubmitting) {
               setShowOrderModal(false);
               setCustomerName('');
@@ -1758,7 +1768,11 @@ function App() {
         </button>
         
         <button
-          onClick={handleStartOrder}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleStartOrder();
+          }}
           disabled={isSubmitting}
           style={{
             flex: 1,
@@ -1781,7 +1795,11 @@ function App() {
 
       <div style={{ textAlign: 'center' }}>
         <button
-          onClick={handleQuickAddToCart}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleQuickAddToCart();
+          }}
           disabled={isSubmitting}
           style={{
             width: '100%',
