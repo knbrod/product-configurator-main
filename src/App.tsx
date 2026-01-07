@@ -21,6 +21,51 @@ const PRODUCT_PATH = import.meta.env.DEV
   ? '' // Local development - load from public folder
   : 'https://cheytac-assets.sfo3.cdn.digitaloceanspaces.com'; // Production - CDN URL
 
+// ============================================
+// reCAPTCHA v3 CONFIGURATION
+// ============================================
+const RECAPTCHA_SITE_KEY = '6LePgkMsAAAAADWO1mjkWHQzWbwCWMdnpSApZwMW';
+
+const loadRecaptchaScript = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== 'undefined' && (window as any).grecaptcha) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onload = () => {
+      (window as any).grecaptcha.ready(() => {
+        resolve();
+      });
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Failed to load reCAPTCHA script'));
+    };
+    
+    document.head.appendChild(script);
+  });
+};
+
+const getRecaptchaToken = async (action: string): Promise<string> => {
+  try {
+    await loadRecaptchaScript();
+    const token = await (window as any).grecaptcha.execute(RECAPTCHA_SITE_KEY, { action });
+    return token;
+  } catch (error) {
+    console.error('Failed to get reCAPTCHA token:', error);
+    throw new Error('Security verification failed. Please refresh and try again.');
+  }
+};
+// ============================================
+// END reCAPTCHA CONFIGURATION
+// ============================================
+
 // Toast notification function
 function showToast(message: string, type: 'success' | 'error' = 'success') {
   // Remove existing toasts
@@ -215,6 +260,9 @@ function App() {
     setIsSubmitting(true);
 
     try {
+      // Get reCAPTCHA token before submission
+      const recaptchaToken = await getRecaptchaToken('configurator_submit');
+      
       const state = useConfigStore.getState();
       const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
       
@@ -401,8 +449,11 @@ function App() {
         finish_mode: finishMode,
         has_custom_parts: hasCustomPartColors,
         
-        // CRITICAL: Flag to send email to sales team
-        send_to_sales: true
+        // Flag to send email to sales team
+        send_to_sales: true,
+        
+        // reCAPTCHA token
+        recaptcha_token: recaptchaToken
       };
 
       console.log('Sending configuration data to WordPress:', configData);
@@ -424,12 +475,15 @@ function App() {
           window.location.href = result.redirect_url;
         }, 1500);
       } else {
+        if (result.code === 'recaptcha_failed') {
+          throw new Error('Security verification failed. Please refresh the page and try again.');
+        }
         throw new Error('Failed to save configuration');
       }
 
     } catch (error) {
       console.error('Order submission failed:', error);
-      showToast('Failed to start order. Please try again.', 'error');
+      showToast(error instanceof Error ? error.message : 'Failed to start order. Please try again.', 'error');
       setIsSubmitting(false);
     }
   };
@@ -458,6 +512,9 @@ function App() {
     setIsSubmitting(true);
 
     try {
+      // Get reCAPTCHA token before submission
+      const recaptchaToken = await getRecaptchaToken('configurator_submit');
+      
       const state = useConfigStore.getState();
       const { manifest, finishMode, selectedPattern, selectedColors, partColorOverrides } = state;
       
@@ -590,8 +647,11 @@ function App() {
         finish_mode: finishMode,
         has_custom_parts: hasCustomPartColors,
         
-        // CRITICAL: Flag to skip sales contact email
-        send_to_sales: false
+        // Flag to skip sales contact email
+        send_to_sales: false,
+        
+        // reCAPTCHA token
+        recaptcha_token: recaptchaToken
       };
 
       console.log('Quick add config:', configData);
@@ -614,12 +674,15 @@ function App() {
           window.location.href = result.redirect_url;
         }, 500);
       } else {
+        if (result.code === 'recaptcha_failed') {
+          throw new Error('Security verification failed. Please refresh the page and try again.');
+        }
         throw new Error(result.message || 'Failed to add to cart');
       }
 
     } catch (error) {
       console.error('Quick add failed:', error);
-      showToast('Failed to add to cart. Please try again.', 'error');
+      showToast(error instanceof Error ? error.message : 'Failed to add to cart. Please try again.', 'error');
       setIsSubmitting(false);
     }
   };
@@ -718,8 +781,35 @@ function App() {
     }
   };
 
+  const loadProductManifest = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/products/example-product/product.manifest.json');
+      if (!response.ok) {
+        throw new Error(`Failed to load manifest: ${response.statusText}`);
+      }
+      
+      const manifestData = await response.json();
+      const validatedManifest = validateManifest(manifestData);
+      
+      loadManifest(validatedManifest, PRODUCT_PATH);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load product');
+      console.error('Failed to load product manifest:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadProductManifest();
+    
+    // Preload reCAPTCHA script on app load
+    loadRecaptchaScript().catch(err => {
+      console.warn('Failed to preload reCAPTCHA:', err);
+    });
     
     const handleResize = () => {
       const isMobile = window.innerWidth <= 768;
@@ -783,28 +873,6 @@ function App() {
       setTimeout(() => setShowTutorial(true), 500);
     }
   }, [modelLoading, disclaimerAcknowledged]);
-
-  const loadProductManifest = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/products/example-product/product.manifest.json');
-      if (!response.ok) {
-        throw new Error(`Failed to load manifest: ${response.statusText}`);
-      }
-      
-      const manifestData = await response.json();
-      const validatedManifest = validateManifest(manifestData);
-      
-      loadManifest(validatedManifest, PRODUCT_PATH);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load product');
-      console.error('Failed to load product manifest:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -899,329 +967,330 @@ function App() {
         height: '100%'
       }}>
         <Canvas 
-        camera={{ 
-          position: cameraPosition, 
-          fov: 75,
-          near: 0.1,
-          far: 1000
-        }} 
-        gl={{
-          logarithmicDepthBuffer: true,
-          antialias: window.innerWidth > 768,
-          preserveDrawingBuffer: true,
-          powerPreference: 'high-performance'
-        }}
-        shadows
-        dpr={window.innerWidth <= 768 ? 1 : Math.min(window.devicePixelRatio, 2)}
-      >
-        <TestModelViewer 
-          productPath={PRODUCT_PATH}
-          onLoadComplete={() => {
-            setModelLoading(false);
-            if (!disclaimerAcknowledged) {
-              setShowDisclaimer(true);
-            }
+          camera={{ 
+            position: cameraPosition, 
+            fov: 75,
+            near: 0.1,
+            far: 1000
+          }} 
+          gl={{
+            logarithmicDepthBuffer: true,
+            antialias: window.innerWidth > 768,
+            preserveDrawingBuffer: true,
+            powerPreference: 'high-performance'
           }}
-        />
-        <LuxuryConfigurator />
-        <ModelPreloader />
-        <PartClickHandler />
-      </Canvas>
-      
-      <LuxuryConfigModal />
-      <UIControls />
-      
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        left: '20px',
-        background: '#efddddd3',
-        padding: '15px',
-        borderRadius: '8px'
-      }}>
-        <img 
-          src="/logo.png" 
-          alt="Company Logo" 
-          style={{ height: '40px', width: 'auto' }}
-        />
-      </div>
-      
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        right: '20px',
-        zIndex: 1000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}>
-        <button
-          onClick={() => setShowOrderModal(true)}
-          style={{
-            background: '#BA2025',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '14px 20px',
-            fontSize: '15px',
-            fontWeight: '700',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
-            letterSpacing: '0.5px'
-          }}
+          shadows
+          dpr={window.innerWidth <= 768 ? 1 : Math.min(window.devicePixelRatio, 2)}
         >
-        START ORDER PROCESS
-        </button>
+          <TestModelViewer 
+            productPath={PRODUCT_PATH}
+            onLoadComplete={() => {
+              setModelLoading(false);
+              if (!disclaimerAcknowledged) {
+                setShowDisclaimer(true);
+              }
+            }}
+          />
+          <LuxuryConfigurator />
+          <ModelPreloader />
+          <PartClickHandler />
+        </Canvas>
         
-        <button
-          onClick={handleShare}
-          style={{
-            background: '#4a4a4a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          Share Configuration
-        </button>
+        <LuxuryConfigModal />
+        <UIControls />
         
-        <button
-          onClick={handleExport}
-          style={{
-            background: '#4a4a4a',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: 'Inter, system-ui, sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px'
-          }}
-        >
-          Export Configuration
-        </button>
-      </div>
-      
-      <div 
-        className="itar-notice"
-        style={{
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          background: '#efddddd3',
+          padding: '15px',
+          borderRadius: '8px'
+        }}>
+          <img 
+            src="/logo.png" 
+            alt="Company Logo" 
+            style={{ height: '40px', width: 'auto' }}
+          />
+        </div>
+        
+        <div style={{
           position: 'fixed',
           bottom: '20px',
-          left: '20px',
-          background: '#ba2025',
-          color: 'white',
-          padding: itarCollapsed ? '10px 12px' : '15px',
-          borderRadius: '8px',
-          maxWidth: itarCollapsed ? 'auto' : '280px',
-          fontSize: '11px',
-          lineHeight: '1.4',
-          border: '2px solid #ba2025',
-          zIndex: 30,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          transition: 'all 0.3s ease',
-          cursor: 'pointer',
-          userSelect: 'none'
-        }}
-        onClick={() => setItarCollapsed(!itarCollapsed)}
-      >
-        {itarCollapsed ? (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            fontWeight: 'bold',
-            fontSize: '12px'
-          }}>
-            <span>⚠️ ITAR</span>
-            <span style={{ fontSize: '10px', opacity: 0.8 }}>▶</span>
-          </div>
-        ) : (
-          <>
-            <div style={{ 
-              fontWeight: 'bold', 
-              marginBottom: '8px', 
-              fontSize: '13px',
+          right: '20px',
+          zIndex: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
+          <button
+            onClick={() => setShowOrderModal(true)}
+            style={{
+              background: '#BA2025',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '14px 20px',
+              fontSize: '15px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontFamily: 'Inter, system-ui, sans-serif',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+              letterSpacing: '0.5px'
+            }}
+          >
+            START ORDER PROCESS
+          </button>
+          
+          <button
+            onClick={handleShare}
+            style={{
+              background: '#4a4a4a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            Share Configuration
+          </button>
+          
+          <button
+            onClick={handleExport}
+            style={{
+              background: '#4a4a4a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '12px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontFamily: 'Inter, system-ui, sans-serif',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            Export Configuration
+          </button>
+        </div>
+        
+        <div 
+          className="itar-notice"
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            background: '#ba2025',
+            color: 'white',
+            padding: itarCollapsed ? '10px 12px' : '15px',
+            borderRadius: '8px',
+            maxWidth: itarCollapsed ? 'auto' : '280px',
+            fontSize: '11px',
+            lineHeight: '1.4',
+            border: '2px solid #ba2025',
+            zIndex: 30,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            transition: 'all 0.3s ease',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+          onClick={() => setItarCollapsed(!itarCollapsed)}
+        >
+          {itarCollapsed ? (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              fontWeight: 'bold',
+              fontSize: '12px'
             }}>
-              <span>⚠️ ITAR / EAR NOTICE</span>
-              <span style={{ fontSize: '10px', opacity: 0.8 }}>▼</span>
+              <span>⚠️ ITAR</span>
+              <span style={{ fontSize: '10px', opacity: 0.8 }}>▶</span>
             </div>
-            <div>
-              This configurator is for demonstration purposes only. This does not constitute a sale or offer for sale. 
-              Export restrictions may apply under ITAR and EAR regulations.
-            </div>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div style={{ 
+                fontWeight: 'bold', 
+                marginBottom: '8px', 
+                fontSize: '13px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <span>⚠️ ITAR / EAR NOTICE</span>
+                <span style={{ fontSize: '10px', opacity: 0.8 }}>▼</span>
+              </div>
+              <div>
+                This configurator is for demonstration purposes only. This does not constitute a sale or offer for sale. 
+                Export restrictions may apply under ITAR and EAR regulations.
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {showDisclaimer && (
-  <div 
-    onClick={(e) => {
-      if (e.target === e.currentTarget) {
-        setShowDisclaimer(false);
-        setDisclaimerAcknowledged(true);
-      }
-    }}
-    style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.85)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 999999,
-      padding: 'clamp(10px, 3vw, 20px)',
-      animation: 'fadeIn 0.3s ease-in',
-      cursor: 'pointer',
-      overflowY: 'auto'
-    }}>
-    <div 
-      className="disclaimer-modal-content"
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-        borderRadius: 'clamp(8px, 1.5vw, 12px)',
-        padding: 'clamp(25px, 5vw, 40px)',
-        maxWidth: 'min(600px, 90vw)',
-        width: '100%',
-        border: '2px solid #ba2025',
-        boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
-        animation: 'slideUp 0.4s ease-out',
-        cursor: 'default',
-        margin: 'auto',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-      <div style={{
-        textAlign: 'center',
-        marginBottom: 'clamp(20px, 4vw, 30px)'
-      }}>
-        <img 
-          src="/logo.png" 
-          alt="CheyTac USA" 
-          style={{ 
-            height: 'clamp(40px, 8vw, 60px)', 
-            width: 'auto',
-            marginBottom: 'clamp(15px, 3vw, 20px)'
+        <div 
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowDisclaimer(false);
+              setDisclaimerAcknowledged(true);
+            }
           }}
-        />
-        <h2 style={{
-          color: '#BA2025',
-          fontSize: 'clamp(20px, 4vw, 24px)',
-          fontWeight: '700',
-          marginBottom: 'clamp(8px, 1.5vw, 10px)',
-          letterSpacing: '0.5px',
-          lineHeight: '1.2'
-        }}>
-          VISUALIZATION NOTICE
-        </h2>
-      </div>
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: 'clamp(10px, 3vw, 20px)',
+            animation: 'fadeIn 0.3s ease-in',
+            cursor: 'pointer',
+            overflowY: 'auto'
+          }}
+        >
+          <div 
+            className="disclaimer-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              padding: 'clamp(25px, 5vw, 40px)',
+              maxWidth: 'min(600px, 90vw)',
+              width: '100%',
+              border: '2px solid #ba2025',
+              boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+              animation: 'slideUp 0.4s ease-out',
+              cursor: 'default',
+              margin: 'auto',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: 'clamp(20px, 4vw, 30px)'
+            }}>
+              <img 
+                src="/logo.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: 'clamp(40px, 8vw, 60px)', 
+                  width: 'auto',
+                  marginBottom: 'clamp(15px, 3vw, 20px)'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: 'clamp(20px, 4vw, 24px)',
+                fontWeight: '700',
+                marginBottom: 'clamp(8px, 1.5vw, 10px)',
+                letterSpacing: '0.5px',
+                lineHeight: '1.2'
+              }}>
+                VISUALIZATION NOTICE
+              </h2>
+            </div>
 
-      <div style={{
-        color: '#e5e5e5',
-        fontSize: 'clamp(14px, 2.8vw, 16px)',
-        lineHeight: '1.6',
-        marginBottom: 'clamp(20px, 4vw, 30px)',
-        textAlign: 'left'
-      }}>
-        <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
-          This configurator is designed for <strong style={{ color: '#BA2025' }}>visualization purposes only</strong>.
-        </p>
-        
-        <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
-          <strong>Please Note:</strong>
-        </p>
-        
-        <ul style={{ 
-          paddingLeft: 'clamp(15px, 3vw, 20px)',
-          marginBottom: 'clamp(12px, 2.5vw, 15px)',
-          listStyle: 'disc'
-        }}>
-          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
-            Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen
-          </li>
-          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
-            Actual finish patterns and colors <strong>may vary</strong> from digital representations
-          </li>
-          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
-            Variations in texture, tone, and pattern placement are normal and expected
-          </li>
-          <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
-            This tool provides an <strong>approximate preview</strong> of your configuration
-          </li>
-        </ul>
+            <div style={{
+              color: '#e5e5e5',
+              fontSize: 'clamp(14px, 2.8vw, 16px)',
+              lineHeight: '1.6',
+              marginBottom: 'clamp(20px, 4vw, 30px)',
+              textAlign: 'left'
+            }}>
+              <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
+                This configurator is designed for <strong style={{ color: '#BA2025' }}>visualization purposes only</strong>.
+              </p>
+              
+              <p style={{ marginBottom: 'clamp(12px, 2.5vw, 15px)' }}>
+                <strong>Please Note:</strong>
+              </p>
+              
+              <ul style={{ 
+                paddingLeft: 'clamp(15px, 3vw, 20px)',
+                marginBottom: 'clamp(12px, 2.5vw, 15px)',
+                listStyle: 'disc'
+              }}>
+                <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+                  Each CheyTac M200 rifle is <strong>hand-painted</strong> by skilled craftsmen
+                </li>
+                <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+                  Actual finish patterns and colors <strong>may vary</strong> from digital representations
+                </li>
+                <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+                  Variations in texture, tone, and pattern placement are normal and expected
+                </li>
+                <li style={{ marginBottom: 'clamp(6px, 1.2vw, 8px)' }}>
+                  This tool provides an <strong>approximate preview</strong> of your configuration
+                </li>
+              </ul>
 
-        <p style={{ 
-          fontSize: 'clamp(12px, 2.3vw, 14px)',
-          color: '#999',
-          fontStyle: 'italic'
-        }}>
-          For exact finish specifications, please contact our sales team.
-        </p>
-      </div>
+              <p style={{ 
+                fontSize: 'clamp(12px, 2.3vw, 14px)',
+                color: '#999',
+                fontStyle: 'italic'
+              }}>
+                For exact finish specifications, please contact our sales team.
+              </p>
+            </div>
 
-      <button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowDisclaimer(false);
-          setDisclaimerAcknowledged(true);
-        }}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        type="button"
-        style={{
-          width: '100%',
-          background: '#BA2025',
-          color: 'white',
-          border: 'none',
-          borderRadius: 'clamp(6px, 1.2vw, 8px)',
-          padding: 'clamp(14px, 2.8vw, 16px) clamp(20px, 4vw, 24px)',
-          fontSize: 'clamp(14px, 2.8vw, 16px)',
-          fontWeight: '700',
-          cursor: 'pointer',
-          letterSpacing: '0.5px',
-          boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
-          minHeight: '44px'
-        }}
-      >
-        I UNDERSTAND — CONTINUE TO CONFIGURATOR
-      </button>
-    </div>
-  </div>
-)}
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDisclaimer(false);
+                setDisclaimerAcknowledged(true);
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              type="button"
+              style={{
+                width: '100%',
+                background: '#BA2025',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                padding: 'clamp(14px, 2.8vw, 16px) clamp(20px, 4vw, 24px)',
+                fontSize: 'clamp(14px, 2.8vw, 16px)',
+                fontWeight: '700',
+                cursor: 'pointer',
+                letterSpacing: '0.5px',
+                boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+                minHeight: '44px'
+              }}
+            >
+              I UNDERSTAND — CONTINUE TO CONFIGURATOR
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Tutorial Overlay - Shows Every Visit */}
       {showTutorial && (
         <div 
           onClick={(e) => {
@@ -1498,339 +1567,342 @@ function App() {
         </div>
       )}
 
-{showOrderModal && (
-  <div 
-    onClick={(e) => {
-      if (e.target === e.currentTarget && !isSubmitting) {
-        setShowOrderModal(false);
-      }
-    }}
-    style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.85)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 999999,
-      padding: 'clamp(10px, 3vw, 20px)',
-      animation: 'fadeIn 0.3s ease-in',
-      cursor: 'pointer',
-      overflowY: 'auto'
-    }}>
-    <div 
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-        borderRadius: 'clamp(8px, 1.5vw, 12px)',
-        padding: 'clamp(20px, 4vw, 40px)',
-        maxWidth: 'min(500px, 90vw)',
-        width: '100%',
-        border: '2px solid #ba2025',
-        boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
-        animation: 'slideUp 0.4s ease-out',
-        cursor: 'default',
-        margin: 'auto',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-      <div style={{
-        textAlign: 'center',
-        marginBottom: 'clamp(15px, 3vw, 30px)'
-      }}>
-        <img 
-          src="https://cheytac.com/wp-content/uploads/2025/03/cropped-Cheytac-Logos-white.png" 
-          alt="CheyTac USA" 
-          style={{ 
-            height: 'clamp(40px, 8vw, 60px)', 
-            width: 'auto',
-            marginBottom: 'clamp(10px, 2vw, 20px)'
-          }}
-        />
-        <h2 style={{
-          color: '#BA2025',
-          fontSize: 'clamp(18px, 4vw, 24px)',
-          fontWeight: '700',
-          marginBottom: 'clamp(5px, 1vw, 10px)',
-          letterSpacing: '0.5px',
-          lineHeight: '1.2'
-        }}>
-          COMPLETE YOUR ORDER
-        </h2>
-        <p style={{
-          color: '#aaa',
-          fontSize: 'clamp(12px, 2.5vw, 14px)',
-          lineHeight: '1.4'
-        }}>
-          Choose how you'd like to proceed with your M200 configuration
-        </p>
-      </div>
-
-      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
-        <label style={{
-          display: 'block',
-          color: '#e5e5e5',
-          fontSize: 'clamp(13px, 2.5vw, 14px)',
-          fontWeight: '600',
-          marginBottom: 'clamp(6px, 1.2vw, 8px)'
-        }}>
-          Your Name *
-        </label>
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="John Doe"
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            border: '2px solid #4a4a4a',
-            background: '#2a2a2a',
-            color: 'white',
-            fontSize: 'clamp(14px, 2.8vw, 16px)',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-            boxSizing: 'border-box'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-        />
-      </div>
-
-      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
-        <label style={{
-          display: 'block',
-          color: '#e5e5e5',
-          fontSize: 'clamp(13px, 2.5vw, 14px)',
-          fontWeight: '600',
-          marginBottom: 'clamp(6px, 1.2vw, 8px)'
-        }}>
-          Email Address *
-        </label>
-        <input
-          type="email"
-          value={customerEmail}
-          onChange={(e) => setCustomerEmail(e.target.value)}
-          placeholder="john@example.com"
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            border: '2px solid #4a4a4a',
-            background: '#2a2a2a',
-            color: 'white',
-            fontSize: 'clamp(14px, 2.8vw, 16px)',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-            boxSizing: 'border-box'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-        />
-      </div>
-
-      <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
-        <label style={{
-          display: 'block',
-          color: '#e5e5e5',
-          fontSize: 'clamp(13px, 2.5vw, 14px)',
-          fontWeight: '600',
-          marginBottom: 'clamp(6px, 1.2vw, 8px)'
-        }}>
-          Phone Number *
-        </label>
-        <input
-          type="tel"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          placeholder="(555) 123-4567"
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            border: '2px solid #4a4a4a',
-            background: '#2a2a2a',
-            color: 'white',
-            fontSize: 'clamp(14px, 2.8vw, 16px)',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-            boxSizing: 'border-box'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#BA2025'}
-          onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
-        />
-      </div>
-
-      <div style={{
-        margin: 'clamp(20px, 4vw, 30px) 0 clamp(15px, 3vw, 20px) 0',
-        padding: 'clamp(15px, 3vw, 20px)',
-        background: 'rgba(255, 255, 255, 0.03)',
-        border: '1px solid rgba(186, 32, 37, 0.3)',
-        borderRadius: 'clamp(3px, 0.6vw, 4px)'
-      }}>
-        <label style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          cursor: 'pointer',
-          color: '#ccc'
-        }}>
-          <input 
-            type="checkbox" 
-            checked={emailOptIn}
-            onChange={(e) => setEmailOptIn(e.target.checked)}
-            disabled={isSubmitting}
-            style={{
-              width: 'clamp(18px, 3vw, 20px)',
-              height: 'clamp(18px, 3vw, 20px)',
-              marginRight: 'clamp(10px, 2vw, 15px)',
-              marginTop: 'clamp(2px, 0.4vw, 3px)',
-              accentColor: '#BA2025',
-              cursor: 'pointer',
-              flexShrink: 0
-            }}
-          />
-          <span style={{ flex: 1 }}>
-            <strong style={{ 
-              color: '#BA2025', 
-              fontSize: 'clamp(14px, 2.8vw, 16px)', 
-              display: 'block', 
-              marginBottom: 'clamp(3px, 0.8vw, 5px)',
-              lineHeight: '1.3'
-            }}>
-              Seize the Distance and Stay Updated!
-            </strong>
-            <span style={{ 
-              color: '#aaa', 
-              fontSize: 'clamp(12px, 2.3vw, 14px)',
-              lineHeight: '1.4'
-            }}>
-              Get exclusive updates on new CheyTac products, limited releases, special offers, and merchandise. 
-              Unsubscribe anytime.
-            </span>
-          </span>
-        </label>
-        
-        <p style={{
-          margin: 'clamp(10px, 2vw, 12px) 0 0 clamp(28px, 5vw, 35px)',
-          fontSize: 'clamp(10px, 2vw, 11px)',
-          color: '#666',
-          lineHeight: '1.5'
-        }}>
-          By checking this box, you consent to receive marketing emails from CheyTac USA. 
-          We respect your privacy and never share your information. 
-          <a href="https://cheytac.com/privacy-policy" target="_blank" style={{ color: '#BA2025', textDecoration: 'none' }}>
-            Privacy Policy
-          </a>
-        </p>
-      </div>
-
-      <div style={{
-        display: 'flex',
-        flexDirection: window.innerWidth < 500 ? 'column' : 'row',
-        gap: 'clamp(8px, 1.5vw, 12px)',
-        marginBottom: 'clamp(12px, 2.5vw, 15px)'
-      }}>
-        <button
+      {showOrderModal && (
+        <div 
           onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!isSubmitting) {
+            if (e.target === e.currentTarget && !isSubmitting) {
               setShowOrderModal(false);
-              setCustomerName('');
-              setCustomerEmail('');
-              setCustomerPhone('');
-              setEmailOptIn(false);
             }
           }}
-          disabled={isSubmitting}
           style={{
-            flex: 1,
-            background: '#4a4a4a',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
-            fontSize: 'clamp(14px, 2.8vw, 16px)',
-            fontWeight: '600',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.5 : 1,
-            minHeight: '44px'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: 'clamp(10px, 3vw, 20px)',
+            animation: 'fadeIn 0.3s ease-in',
+            cursor: 'pointer',
+            overflowY: 'auto'
           }}
         >
-          Cancel
-        </button>
-        
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleStartOrder();
-          }}
-          disabled={isSubmitting}
-          style={{
-            flex: 1,
-            background: isSubmitting ? '#8B1519' : '#BA2025',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
-            fontSize: 'clamp(14px, 2.8vw, 16px)',
-            fontWeight: '700',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            letterSpacing: '0.5px',
-            boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
-            minHeight: '44px'
-          }}
-        >
-          {isSubmitting ? 'Processing...' : 'Contact Sales'}
-        </button>
-      </div>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+              borderRadius: 'clamp(8px, 1.5vw, 12px)',
+              padding: 'clamp(20px, 4vw, 40px)',
+              maxWidth: 'min(500px, 90vw)',
+              width: '100%',
+              border: '2px solid #ba2025',
+              boxShadow: '0 8px 32px rgba(186, 32, 37, 0.3)',
+              animation: 'slideUp 0.4s ease-out',
+              cursor: 'default',
+              margin: 'auto',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+          >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: 'clamp(15px, 3vw, 30px)'
+            }}>
+              <img 
+                src="https://cheytac.com/wp-content/uploads/2025/03/cropped-Cheytac-Logos-white.png" 
+                alt="CheyTac USA" 
+                style={{ 
+                  height: 'clamp(40px, 8vw, 60px)', 
+                  width: 'auto',
+                  marginBottom: 'clamp(10px, 2vw, 20px)'
+                }}
+              />
+              <h2 style={{
+                color: '#BA2025',
+                fontSize: 'clamp(18px, 4vw, 24px)',
+                fontWeight: '700',
+                marginBottom: 'clamp(5px, 1vw, 10px)',
+                letterSpacing: '0.5px',
+                lineHeight: '1.2'
+              }}>
+                COMPLETE YOUR ORDER
+              </h2>
+              <p style={{
+                color: '#aaa',
+                fontSize: 'clamp(12px, 2.5vw, 14px)',
+                lineHeight: '1.4'
+              }}>
+                Choose how you'd like to proceed with your M200 configuration
+              </p>
+            </div>
 
-      <div style={{ textAlign: 'center' }}>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleQuickAddToCart();
-          }}
-          disabled={isSubmitting}
-          style={{
-            width: '100%',
-            background: 'transparent',
-            color: '#BA2025',
-            border: '2px solid #BA2025',
-            borderRadius: 'clamp(6px, 1.2vw, 8px)',
-            padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
-            fontSize: 'clamp(13px, 2.5vw, 14px)',
-            fontWeight: '600',
-            cursor: isSubmitting ? 'not-allowed' : 'pointer',
-            opacity: isSubmitting ? 0.5 : 1,
-            fontFamily: 'Inter, system-ui, sans-serif',
-            transition: 'all 0.2s',
-            minHeight: '44px'
-          }}
-          onMouseOver={(e) => {
-            if (!isSubmitting) {
-              e.currentTarget.style.background = 'rgba(186, 32, 37, 0.1)';
-            }
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          Add to Cart Without Sales Contact
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: 'clamp(13px, 2.5vw, 14px)',
+                fontWeight: '600',
+                marginBottom: 'clamp(6px, 1.2vw, 8px)'
+              }}>
+                Your Name *
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="John Doe"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: 'clamp(14px, 2.8vw, 16px)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: 'clamp(13px, 2.5vw, 14px)',
+                fontWeight: '600',
+                marginBottom: 'clamp(6px, 1.2vw, 8px)'
+              }}>
+                Email Address *
+              </label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="john@example.com"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: 'clamp(14px, 2.8vw, 16px)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            <div style={{ marginBottom: 'clamp(15px, 3vw, 25px)' }}>
+              <label style={{
+                display: 'block',
+                color: '#e5e5e5',
+                fontSize: 'clamp(13px, 2.5vw, 14px)',
+                fontWeight: '600',
+                marginBottom: 'clamp(6px, 1.2vw, 8px)'
+              }}>
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  padding: 'clamp(10px, 2vw, 12px) clamp(12px, 2.5vw, 16px)',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  border: '2px solid #4a4a4a',
+                  background: '#2a2a2a',
+                  color: 'white',
+                  fontSize: 'clamp(14px, 2.8vw, 16px)',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#BA2025'}
+                onBlur={(e) => e.target.style.borderColor = '#4a4a4a'}
+              />
+            </div>
+
+            <div style={{
+              margin: 'clamp(20px, 4vw, 30px) 0 clamp(15px, 3vw, 20px) 0',
+              padding: 'clamp(15px, 3vw, 20px)',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(186, 32, 37, 0.3)',
+              borderRadius: 'clamp(3px, 0.6vw, 4px)'
+            }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                cursor: 'pointer',
+                color: '#ccc'
+              }}>
+                <input 
+                  type="checkbox" 
+                  checked={emailOptIn}
+                  onChange={(e) => setEmailOptIn(e.target.checked)}
+                  disabled={isSubmitting}
+                  style={{
+                    width: 'clamp(18px, 3vw, 20px)',
+                    height: 'clamp(18px, 3vw, 20px)',
+                    marginRight: 'clamp(10px, 2vw, 15px)',
+                    marginTop: 'clamp(2px, 0.4vw, 3px)',
+                    accentColor: '#BA2025',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                />
+                <span style={{ flex: 1 }}>
+                  <strong style={{ 
+                    color: '#BA2025', 
+                    fontSize: 'clamp(14px, 2.8vw, 16px)', 
+                    display: 'block', 
+                    marginBottom: 'clamp(3px, 0.8vw, 5px)',
+                    lineHeight: '1.3'
+                  }}>
+                    Seize the Distance and Stay Updated!
+                  </strong>
+                  <span style={{ 
+                    color: '#aaa', 
+                    fontSize: 'clamp(12px, 2.3vw, 14px)',
+                    lineHeight: '1.4'
+                  }}>
+                    Get exclusive updates on new CheyTac products, limited releases, special offers, and merchandise. 
+                    Unsubscribe anytime.
+                  </span>
+                </span>
+              </label>
+              
+              <p style={{
+                margin: 'clamp(10px, 2vw, 12px) 0 0 clamp(28px, 5vw, 35px)',
+                fontSize: 'clamp(10px, 2vw, 11px)',
+                color: '#666',
+                lineHeight: '1.5'
+              }}>
+                By checking this box, you consent to receive marketing emails from CheyTac USA. 
+                We respect your privacy and never share your information. 
+                <a href="https://cheytac.com/privacy-policy" target="_blank" rel="noopener noreferrer" style={{ color: '#BA2025', textDecoration: 'none' }}>
+                  Privacy Policy
+                </a>
+              </p>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexDirection: window.innerWidth < 500 ? 'column' : 'row',
+              gap: 'clamp(8px, 1.5vw, 12px)',
+              marginBottom: 'clamp(12px, 2.5vw, 15px)'
+            }}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isSubmitting) {
+                    setShowOrderModal(false);
+                    setCustomerName('');
+                    setCustomerEmail('');
+                    setCustomerPhone('');
+                    setEmailOptIn(false);
+                  }
+                }}
+                disabled={isSubmitting}
+                style={{
+                  flex: 1,
+                  background: '#4a4a4a',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+                  fontSize: 'clamp(14px, 2.8vw, 16px)',
+                  fontWeight: '600',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.5 : 1,
+                  minHeight: '44px'
+                }}
+              >
+                Cancel
+              </button>
+              
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleStartOrder();
+                }}
+                disabled={isSubmitting}
+                style={{
+                  flex: 1,
+                  background: isSubmitting ? '#8B1519' : '#BA2025',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+                  fontSize: 'clamp(14px, 2.8vw, 16px)',
+                  fontWeight: '700',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 4px 12px rgba(186, 32, 37, 0.4)',
+                  minHeight: '44px'
+                }}
+              >
+                {isSubmitting ? 'Processing...' : 'Contact Sales'}
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleQuickAddToCart();
+                }}
+                disabled={isSubmitting}
+                style={{
+                  width: '100%',
+                  background: 'transparent',
+                  color: '#BA2025',
+                  border: '2px solid #BA2025',
+                  borderRadius: 'clamp(6px, 1.2vw, 8px)',
+                  padding: 'clamp(12px, 2.5vw, 14px) clamp(18px, 3.5vw, 24px)',
+                  fontSize: 'clamp(13px, 2.5vw, 14px)',
+                  fontWeight: '600',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.5 : 1,
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  transition: 'all 0.2s',
+                  minHeight: '44px'
+                }}
+                onMouseOver={(e) => {
+                  if (!isSubmitting) {
+                    e.currentTarget.style.background = 'rgba(186, 32, 37, 0.1)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                Add to Cart Without Sales Contact
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showShareModal && (
         <div 
           onClick={(e) => {
@@ -1839,33 +1911,35 @@ function App() {
             }
           }}
           style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: '#BA2025',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 999999,
-          padding: '20px',
-          animation: 'fadeIn 0.3s ease-in',
-          cursor: 'pointer'
-        }}>
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: '#BA2025',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '20px',
+            animation: 'fadeIn 0.3s ease-in',
+            cursor: 'pointer'
+          }}
+        >
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
-            borderRadius: '12px',
-            padding: '40px',
-            maxWidth: '450px',
-            width: '100%',
-            border: '10px solid #ba2025',
-            boxShadow: '0 8px 32px #ba2025',
-            animation: 'slideUp 0.4s ease-out',
-            cursor: 'default'
-          }}>
+              background: 'linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%)',
+              borderRadius: '12px',
+              padding: '40px',
+              maxWidth: '450px',
+              width: '100%',
+              border: '10px solid #ba2025',
+              boxShadow: '0 8px 32px #ba2025',
+              animation: 'slideUp 0.4s ease-out',
+              cursor: 'default'
+            }}
+          >
             <div style={{
               textAlign: 'center',
               marginBottom: '30px'
@@ -2167,7 +2241,7 @@ function App() {
           top: 100px;
           right: 20px;
           padding: 12px 20px;
-          borderRadius: 8px;
+          border-radius: 8px;
           color: white;
           font-weight: 600;
           font-size: 14px;
@@ -2235,10 +2309,12 @@ function App() {
           
           .disclaimer-modal-content img {
             height: 50px !important;
-          }
+          }cd C:\Users\Kelley\Desktop\product-configurator-main\product-configurator-main
         }
       `}</style>
     </div>
+
+
   );
 }
 
